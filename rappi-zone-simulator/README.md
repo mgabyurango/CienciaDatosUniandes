@@ -1,6 +1,9 @@
 # Rappi Zone Simulator
 
-Simulador educativo para mostrar cómo la demanda, la capacidad y las decisiones de operaciones afectan el ETA de una plataforma de delivery.
+Laboratorio educativo con dos juegos interactivos:
+
+- **Presión operativa por zona:** muestra cómo la demanda, la capacidad y las decisiones de operaciones afectan el ETA.
+- **Segmentación de clientes:** permite clasificar clientes nuevos, elegir intervenciones y analizar si una decisión fue buena o solo tuvo suerte.
 
 ## Ejecutarlo localmente
 
@@ -31,6 +34,8 @@ No necesitas configurar una base de datos. El estado compartido vive en memoria 
 
 ## Estructura
 
-- `upload/rappi-zone-simulator.html`: interfaz y lógica de simulación.
+- `upload/home.html`: selector de juegos.
+- `upload/rappi-zone-simulator.html`: simulador de zonas.
+- `upload/segmentation-game.html`: juego de segmentación y post mortem.
 - `server.js`: servidor web y sincronización compartida.
 - `railway.json`: configuración de despliegue y health check.

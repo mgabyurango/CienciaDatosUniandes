@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Decision Lab — Juegos de datos</title>
+  <style>
+    :root{--ink:#17191c;--muted:#686b70;--line:#deddd7;--paper:#f5f4f0;--card:#fff;--orange:#ff4f1f;--green:#078a72}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+    main{max-width:1120px;margin:auto;padding:42px 28px 60px}
+    nav{display:flex;align-items:center;gap:12px;padding-bottom:30px;border-bottom:1px solid var(--line)}
+    .mark{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:var(--orange);color:#fff;font-weight:850;font-size:20px;box-shadow:0 8px 20px rgba(255,79,31,.18)}
+    .brand{font-weight:800;letter-spacing:-.02em}.brand small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.12em;margin-top:2px}
+    .hero{padding:72px 0 40px;max-width:780px}.kicker{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--orange);font-weight:800}
+    h1{font-size:clamp(38px,6vw,68px);line-height:.98;letter-spacing:-.055em;margin:14px 0 20px}p{color:var(--muted);font-size:17px;line-height:1.6;margin:0;max-width:680px}
+    .games{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:22px}.game{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px;text-decoration:none;color:inherit;min-height:270px;display:flex;flex-direction:column;transition:.18s ease;overflow:hidden}
+    .game:hover{transform:translateY(-3px);border-color:#aaa8a0;box-shadow:0 18px 45px rgba(20,22,26,.08)}.game:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:var(--tone)}
+    .num{color:var(--tone);font-size:12px;font-weight:800;letter-spacing:.1em}.game h2{font-size:27px;letter-spacing:-.04em;margin:36px 0 10px}.game p{font-size:14px;line-height:1.55}.go{margin-top:auto;padding-top:28px;font-weight:750;color:var(--tone)}
+    footer{margin-top:54px;padding-top:20px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+    @media(max-width:720px){main{padding:24px 16px 40px}.hero{padding:48px 0 26px}.games{grid-template-columns:1fr}.game{min-height:235px}}
+  </style>
+</head>
+<body>
+  <main>
+    <nav><div class="mark">R</div><div class="brand">Decision Lab<small>Data science × decisiones</small></div></nav>
+    <section class="hero">
+      <div class="kicker">Laboratorio interactivo</div>
+      <h1>¿Qué decisión quieres poner a prueba?</h1>
+      <p>Elige un juego, comparte el enlace con el grupo y convierte una decisión de datos en una experiencia colectiva.</p>
+    </section>
+    <section class="games">
+      <a class="game" href="/zonas" style="--tone:var(--orange)">
+        <div class="num">JUEGO 01</div><h2>Presión operativa por zona</h2>
+        <p>Activa demanda, observa cómo cambia el ETA y decide cuándo cerrar tiendas, bloquear rutas o intervenir la operación.</p>
+        <div class="go">Entrar al simulador →</div>
+      </a>
+      <a class="game" href="/segmentacion" style="--tone:var(--green)">
+        <div class="num">JUEGO 02</div><h2>¿A qué cliente se parece?</h2>
+        <p>Clasifica usuarios nuevos, elige una intervención y descubre si fue una buena decisión o simplemente buena suerte.</p>
+        <div class="go">Entrar al juego →</div>
+      </a>
+    </section>
+    <footer>Simulaciones educativas · Universidad de Los Andes</footer>
+  </main>
+</body>
+</html>

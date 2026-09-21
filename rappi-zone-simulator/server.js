@@ -4,7 +4,14 @@ const path = require('path');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PRESENTER_PASSWORD = process.env.PRESENTER_PASSWORD || 'uniandes2026';
-const INDEX_FILE = path.join(__dirname, 'upload', 'rappi-zone-simulator.html');
+const PAGES = new Map([
+  ['/', path.join(__dirname, 'upload', 'home.html')],
+  ['/index.html', path.join(__dirname, 'upload', 'home.html')],
+  ['/zonas', path.join(__dirname, 'upload', 'rappi-zone-simulator.html')],
+  ['/zonas/', path.join(__dirname, 'upload', 'rappi-zone-simulator.html')],
+  ['/segmentacion', path.join(__dirname, 'upload', 'segmentation-game.html')],
+  ['/segmentacion/', path.join(__dirname, 'upload', 'segmentation-game.html')],
+]);
 const store = new Map();
 
 function sendJson(res, status, payload) {
@@ -33,8 +40,8 @@ function readJson(req) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
-  if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
-    fs.readFile(INDEX_FILE, (error, html) => {
+  if (req.method === 'GET' && PAGES.has(url.pathname)) {
+    fs.readFile(PAGES.get(url.pathname), (error, html) => {
       if (error) return sendJson(res, 500, { error: 'Unable to load the simulator' });
       res.writeHead(200, {
         'Content-Type': 'text/html; charset=utf-8',

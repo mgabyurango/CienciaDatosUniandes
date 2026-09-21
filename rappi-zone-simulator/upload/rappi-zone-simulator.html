@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rappi Live Ops — Simulador de Zonas</title>
+<style>
+  :root{
+    --bg:#0B0D12;
+    --panel:#12151D;
+    --panel2:#171B26;
+    --border:#232838;
+    --text:#E8EAED;
+    --text-dim:#8B93A7;
+    --accent:#FF4713;
+    --accent-dim:#8a2c10;
+    --cool:#2DD4BF;
+    --mid:#F5A623;
+    --hot:#FB3748;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --sans: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 15% 0%, rgba(255,71,19,0.10), transparent 45%),
+      radial-gradient(circle at 85% 100%, rgba(45,212,191,0.08), transparent 45%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+    padding:28px 32px 60px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:20px;
+    border-bottom:1px solid var(--border);
+    padding-bottom:18px;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin-bottom:6px;
+  }
+  h1{
+    font-size:26px;
+    margin:0;
+    font-weight:700;
+    letter-spacing:-0.01em;
+  }
+  .sub{color:var(--text-dim);font-size:13.5px;margin-top:6px;max-width:520px;line-height:1.5;}
+
+  .stat-strip{display:flex;gap:22px;font-family:var(--mono);}
+  .stat{text-align:right;}
+  .stat .n{font-size:22px;font-weight:700;}
+  .stat .l{font-size:10.5px;color:var(--text-dim);letter-spacing:0.08em;text-transform:uppercase;}
+
+  .toolbar{
+    display:flex;
+    gap:10px;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  button{
+    font-family:var(--sans);
+    font-size:13px;
+    font-weight:600;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:var(--panel2);
+    color:var(--text);
+    padding:9px 14px;
+    cursor:pointer;
+    transition:transform .08s ease, border-color .15s ease, background .15s ease;
+  }
+  button:hover{border-color:#3a4258;}
+  button:active{transform:scale(0.97);}
+  .btn-primary{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#fff;
+  }
+  .btn-primary:hover{background:#e63d0f;}
+  .btn-ghost{background:transparent;}
+  .spacer{flex:1;}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));
+    gap:14px;
+    margin-bottom:26px;
+  }
+
+  .zone{
+    position:relative;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:18px 18px 16px;
+    overflow:hidden;
+    transition:border-color .3s ease;
+  }
+  .zone::before{
+    content:'';
+    position:absolute;
+    inset:0;
+    background:var(--zone-color, var(--cool));
+    opacity:0.06;
+    transition:opacity .4s ease, background .4s ease;
+  }
+  .zone.pulse::after{
+    content:'';
+    position:absolute;
+    top:14px;right:14px;
+    width:9px;height:9px;
+    border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 0 0 rgba(255,71,19,0.6);
+    animation:ping 1.1s ease-out;
+  }
+  @keyframes ping{
+    0%{box-shadow:0 0 0 0 rgba(255,71,19,0.55);}
+    100%{box-shadow:0 0 0 22px rgba(255,71,19,0);}
+  }
+
+  .zone-head{display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1;}
+  .zone-name{font-weight:700;font-size:15.5px;}
+  .zone-tag{font-family:var(--mono);font-size:10.5px;color:var(--text-dim);margin-top:2px;}
+
+  .eta-block{margin:16px 0 10px;position:relative;z-index:1;}
+  .eta-num{
+    font-family:var(--mono);
+    font-size:38px;
+    font-weight:700;
+    line-height:1;
+    color:var(--zone-color, var(--cool));
+    transition:color .4s ease;
+  }
+  .eta-label{font-size:10.5px;color:var(--text-dim);letter-spacing:0.08em;text-transform:uppercase;margin-top:4px;}
+
+  .bar-track{
+    height:6px;
+    border-radius:4px;
+    background:#1e2230;
+    overflow:hidden;
+    margin:12px 0 4px;
+    position:relative;z-index:1;
+  }
+  .bar-fill{
+    height:100%;
+    width:0%;
+    background:var(--zone-color, var(--cool));
+    transition:width .5s ease, background .4s ease;
+  }
+  .zone-meta{
+    display:flex;justify-content:space-between;
+    font-family:var(--mono);font-size:11px;color:var(--text-dim);
+    margin-bottom:14px;position:relative;z-index:1;
+  }
+
+  .zone button{
+    width:100%;
+    position:relative;z-index:1;
+    font-size:12.5px;
+  }
+  .zone .closeToggle{
+    margin-top:7px;
+    background:transparent;
+    border:1px solid transparent;
+    color:var(--text-dim);
+    font-size:10.5px;
+    padding:5px 8px;
+  }
+  .zone .closeToggle:hover{color:var(--text);border-color:var(--border);}
+
+  .zone.closed{border-color:#3a2530;}
+  .zone.closed::before{background:var(--hot);opacity:0.10;}
+  .zone.closed .eta-num{color:var(--hot) !important;font-size:19px;}
+  .zone.closed .bar-fill{background:var(--hot) !important;width:100% !important;}
+  .closed-badge{
+    display:none;
+    position:relative;z-index:1;
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--hot);
+    background:rgba(251,55,72,0.12);
+    border:1px solid rgba(251,55,72,0.35);
+    border-radius:6px;
+    padding:3px 7px;
+    margin-top:2px;
+  }
+  .zone.closed .closed-badge{display:inline-block;}
+  .zone.closed .promoBtn{opacity:0.4;cursor:not-allowed;}
+
+  .badge-auto{color:var(--hot);}
+  .badge-manual{color:var(--text-dim);border-color:var(--border);background:transparent;}
+
+  .log-panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px 18px;
+  }
+  .log-panel h2{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.1em;
+    color:var(--text-dim);
+    margin:0 0 10px;
+    font-weight:700;
+  }
+  #log{
+    font-family:var(--mono);
+    font-size:12.5px;
+    max-height:150px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column-reverse;
+  }
+  #log div{padding:4px 0;border-bottom:1px dashed #1c2130;color:var(--text-dim);}
+  #log div span{color:var(--text);}
+  #log div.hot{color:var(--hot);}
+
+  .legend{
+    display:flex;gap:18px;margin-top:14px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:11px;color:var(--text-dim);
+  }
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+
+  footer{margin-top:30px;color:var(--text-dim);font-size:11.5px;text-align:center;}
+
+  .hidden{display:none !important;}
+
+  .mode-bar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    background:var(--panel2);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:12px 16px;
+    margin-bottom:22px;
+  }
+  .mode-bar .hint{font-size:12px;color:var(--text-dim);line-height:1.5;flex:1;min-width:200px;}
+  .mode-bar .hint b{color:var(--text);}
+
+  .student-intro{
+    text-align:center;
+    margin-bottom:26px;
+  }
+  .student-intro h1{font-size:22px;}
+  .student-intro .sub{margin:8px auto 0;max-width:420px;text-align:center;}
+
+  .student-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+    gap:14px;
+  }
+  .sz-card{
+    position:relative;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:20px;
+    text-align:center;
+    overflow:hidden;
+  }
+  .sz-card::before{
+    content:'';
+    position:absolute;inset:0;
+    background:var(--zone-color, var(--cool));
+    opacity:0.07;
+  }
+  .sz-name{font-weight:700;font-size:16px;position:relative;z-index:1;}
+  .sz-tag{font-family:var(--mono);font-size:10.5px;color:var(--text-dim);margin-top:2px;position:relative;z-index:1;}
+  .sz-eta{
+    font-family:var(--mono);
+    font-weight:700;
+    font-size:26px;
+    color:var(--zone-color, var(--cool));
+    margin:14px 0 2px;
+    position:relative;z-index:1;
+  }
+  .sz-eta-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;position:relative;z-index:1;}
+  .orderBtn{
+    width:100%;
+    margin-top:14px;
+    position:relative;z-index:1;
+    font-size:14px;
+    padding:13px 14px;
+  }
+  .orderBtn.sent{background:var(--cool);border-color:var(--cool);color:#06231f;}
+  .sz-note{
+    font-size:11px;
+    color:var(--text-dim);
+    margin-top:8px;
+    position:relative;z-index:1;
+    min-height:14px;
+  }
+
+  .quiz{position:relative;z-index:1;margin-top:14px;text-align:left;}
+  .quiz-q{font-size:12.5px;font-weight:600;margin-bottom:9px;line-height:1.4;}
+  .quiz-opt{
+    width:100%;
+    text-align:left;
+    font-size:12px;
+    font-weight:500;
+    padding:9px 11px;
+    margin-bottom:6px;
+    background:var(--panel2);
+  }
+  .quiz-opt:last-child{margin-bottom:0;}
+  .quiz-msg{font-size:11px;margin-top:6px;min-height:14px;}
+  .quiz-msg.wrong{color:var(--hot);}
+  .quiz-msg.right{color:var(--cool);}
+
+  .pickBtn{width:100%;margin-top:14px;position:relative;z-index:1;font-size:13.5px;}
+  .changeZoneWrap{text-align:center;margin-top:16px;}
+  .changeZoneWrap button{font-size:11.5px;}
+
+  .health-panel{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+    gap:12px;
+    margin-bottom:20px;
+  }
+  .health-item{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:14px 16px;
+    text-align:center;
+  }
+  .health-n{font-family:var(--mono);font-size:24px;font-weight:700;}
+  .health-l{font-size:10px;color:var(--text-dim);letter-spacing:0.06em;text-transform:uppercase;margin-top:4px;}
+
+  .modal-overlay{
+    position:fixed;inset:0;
+    background:rgba(6,7,10,0.72);
+    display:flex;align-items:center;justify-content:center;
+    z-index:100;
+    padding:20px;
+  }
+  .modal-card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:26px 24px;
+    width:280px;
+    text-align:center;
+  }
+  .modal-card h3{margin:0 0 4px;font-size:16px;}
+  .modal-card p{margin:0 0 14px;font-size:12px;color:var(--text-dim);}
+  .modal-card input{
+    width:100%;
+    padding:11px 12px;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:var(--panel2);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:15px;
+    text-align:center;
+    letter-spacing:0.08em;
+    box-sizing:border-box;
+  }
+  .modal-error{color:var(--hot);font-size:11.5px;min-height:16px;margin-top:8px;}
+  .modal-actions{display:flex;gap:8px;margin-top:14px;}
+  .modal-actions button{flex:1;}
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    25%{transform:translateX(-6px);}
+    75%{transform:translateX(6px);}
+  }
+  .shake{animation:shake .3s ease;}
+
+  /* Visual system: operational dashboard, light and presentation-friendly */
+  :root{
+    --bg:#f5f4f0;
+    --panel:#ffffff;
+    --panel2:#f0efea;
+    --border:#dcdad2;
+    --text:#17191c;
+    --text-dim:#686b70;
+    --accent:#ff4f1f;
+    --accent-dim:#bf3210;
+    --cool:#078a72;
+    --mid:#c77a00;
+    --hot:#d63846;
+    --mono:'SFMono-Regular', Consolas, monospace;
+    --sans:Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  body{
+    background:var(--bg);
+    color:var(--text);
+    padding:0 32px 56px;
+  }
+  .wrap{max-width:1240px;}
+  header{
+    align-items:center;
+    min-height:112px;
+    margin-bottom:24px;
+    padding:24px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .brand-row{display:flex;align-items:center;gap:14px;}
+  .brand-mark{
+    display:grid;place-items:center;
+    width:42px;height:42px;
+    border-radius:10px;
+    background:var(--accent);
+    color:#fff;
+    font-size:20px;
+    font-weight:850;
+    letter-spacing:-.06em;
+    box-shadow:0 8px 20px rgba(255,79,31,.18);
+  }
+  .eyebrow{font-family:var(--sans);font-size:11px;font-weight:750;letter-spacing:.12em;margin-bottom:4px;}
+  h1{font-size:25px;font-weight:760;letter-spacing:-.035em;}
+  .sub{color:var(--text-dim);font-size:13px;line-height:1.55;max-width:610px;}
+  .stat-strip{gap:0;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 8px 30px rgba(22,24,28,.04);}
+  .stat{min-width:132px;padding:14px 18px;text-align:left;}
+  .stat + .stat{border-left:1px solid var(--border);}
+  .stat .n{font-family:var(--sans);font-size:22px;font-weight:760;letter-spacing:-.03em;}
+  .stat .l{font-family:var(--sans);font-size:9.5px;font-weight:700;}
+  .mode-bar{background:#191b20;border:0;border-radius:10px;padding:13px 15px;margin-bottom:20px;color:#fff;}
+  .mode-bar .hint{color:#b9bbc2;}.mode-bar .hint b{color:#fff;}
+  button{border-radius:7px;background:#fff;border-color:var(--border);color:var(--text);box-shadow:0 1px 0 rgba(20,22,25,.04);}
+  button:hover{border-color:#aba9a2;background:#faf9f6;}
+  .btn-primary{background:var(--accent);border-color:var(--accent);}
+  .btn-primary:hover{background:#e94518;border-color:#e94518;}
+  .mode-bar button{background:#fff;color:#191b20;border-color:#fff;}
+  .toolbar{padding:0 2px;margin-bottom:18px;}
+  .grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px;}
+  .zone,.sz-card,.health-item,.log-panel{background:var(--panel);border-color:var(--border);box-shadow:0 6px 20px rgba(18,20,24,.035);}
+  .zone{border-radius:10px;padding:17px 17px 14px;}
+  .zone::before,.sz-card::before{opacity:.035;}
+  .zone-name,.sz-name{font-size:15px;letter-spacing:-.01em;}
+  .zone-tag,.sz-tag{font-family:var(--sans);font-size:11px;}
+  .eta-num{font-family:var(--sans);font-size:36px;font-weight:780;letter-spacing:-.055em;}
+  .bar-track{height:5px;background:#ebeae6;}
+  .zone-meta{font-family:var(--sans);font-size:11px;}
+  .health-panel{grid-template-columns:repeat(4,1fr);gap:10px;}
+  .health-item{border-radius:9px;text-align:left;padding:15px 17px;}
+  .health-n{font-family:var(--sans);font-size:24px;letter-spacing:-.04em;}
+  .health-l{font-size:9.5px;font-weight:700;}
+  .log-panel{border-radius:10px;}
+  #log{font-family:var(--sans);font-size:12px;}
+  #log div{border-bottom:1px solid #eeede9;}
+  .student-intro{text-align:left;margin:34px 0 22px;}
+  .student-intro h1{font-size:28px;letter-spacing:-.04em;}
+  .student-intro .sub{text-align:left;margin:7px 0 0;}
+  .student-grid{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;}
+  .sz-card{border-radius:10px;text-align:left;padding:20px;}
+  .sz-eta{font-family:var(--sans);font-size:28px;letter-spacing:-.04em;}
+  .quiz-opt{background:#f7f6f2;border-color:#e4e2dc;}
+  .modal-overlay{background:rgba(20,21,24,.58);backdrop-filter:blur(5px);}
+  .modal-card{background:#fff;border-color:var(--border);border-radius:12px;box-shadow:0 28px 80px rgba(0,0,0,.18);}
+  .modal-card input{background:#f5f4f0;color:var(--text);border-color:var(--border);}
+  footer{border-top:1px solid var(--border);padding-top:20px;}
+  @media (max-width:800px){
+    body{padding:0 16px 40px;}
+    header{align-items:flex-start;}
+    .stat-strip{width:100%;}.stat{flex:1;}
+    .grid,.health-panel{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand-row">
+      <div class="brand-mark">R</div>
+      <div>
+        <div class="eyebrow">Live operations lab</div>
+        <h1>Presión operativa por zona</h1>
+        <div class="sub">Una simulación de demanda, capacidad y tiempo estimado de entrega. Activa promociones, observa la presión del sistema y decide cuándo intervenir.</div>
+      </div>
+    </div>
+    <div class="stat-strip">
+      <div class="stat"><div class="n" id="totalOrders">0</div><div class="l">Pedidos totales</div></div>
+      <div class="stat"><div class="n" id="avgEta">—</div><div class="l">ETA promedio</div></div>
+    </div>
+  </header>
+
+  <div class="mode-bar">
+    <div class="hint" id="modeHint"><b>Vista de participante.</b> Elige un rol para entrar a la simulación. Si estás presentando, abre el tablero general.</div>
+    <button id="modeToggle">Abrir tablero general</button>
+  </div>
+
+  <div id="hostView" class="hidden">
+    <div class="health-panel" id="healthPanel"></div>
+
+    <div class="toolbar">
+      <button class="btn-primary" id="promoAll">Lanzar promo en toda la ciudad</button>
+      <div class="spacer"></div>
+      <button id="organicToggle">Demanda aleatoria: activa</button>
+      <button id="speedToggle">Velocidad: normal</button>
+      <button class="btn-ghost" id="resetBtn">Reiniciar</button>
+    </div>
+
+    <div class="grid" id="zoneGrid"></div>
+
+    <div class="log-panel">
+      <h2>Actividad en vivo</h2>
+      <div id="log"></div>
+    </div>
+
+    <div class="legend">
+      <span><span class="dot" style="background:#078A72"></span> Estable</span>
+      <span><span class="dot" style="background:#C77A00"></span> Con presión</span>
+      <span><span class="dot" style="background:#D63846"></span> Saturada</span>
+      <span><span class="dot" style="background:#D63846;opacity:0.4;"></span> Zona cerrada</span>
+    </div>
+  </div>
+
+  <div id="studentView">
+    <div class="student-intro">
+      <h1 id="studentTitle">Elige tu rol</h1>
+      <div class="sub" id="studentSub">Unos serán clientes, otros serán el equipo de operaciones.</div>
+    </div>
+    <div class="student-grid" id="studentGrid"></div>
+  </div>
+
+  <footer>Simulación ilustrativa para fines educativos — construida para la charla de Data Science en la Universidad de Los Andes.</footer>
+</div>
+
+<div class="modal-overlay hidden" id="passwordModal">
+  <div class="modal-card" id="passwordCard">
+    <h3>Tablero general</h3>
+    <p>Ingresa la clave de presentación para continuar.</p>
+    <input type="password" id="passwordInput" placeholder="Contraseña" autocomplete="off">
+    <div class="modal-error" id="passwordError"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="passwordCancel">Cancelar</button>
+      <button class="btn-primary" id="passwordSubmit">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Shared storage backed by this app's own server.
+window.storage = {
+  async set(key, value) {
+    const response = await fetch('/api/storage', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value }),
+    });
+    if (!response.ok) throw new Error('No se pudo guardar el evento');
+    return response.json();
+  },
+  async get(key) {
+    const response = await fetch(`/api/storage?key=${encodeURIComponent(key)}`);
+    if (!response.ok) throw new Error('No se pudo leer el estado');
+    return response.json();
+  },
+  async list(prefix) {
+    const response = await fetch(`/api/storage?prefix=${encodeURIComponent(prefix)}`);
+    if (!response.ok) throw new Error('No se pudo listar el estado');
+    return response.json();
+  },
+  async delete(key) {
+    const response = await fetch(`/api/storage?key=${encodeURIComponent(key)}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('No se pudo eliminar el evento');
+    return response.json();
+  },
+};
+
+const ZONES = [
+  { id:'chapinero', name:'Chapinero', tag:'Zona T', baseVolume:40, capacity:55,
+    stores:[{id:'a',name:'Tienda A',share:0.5},{id:'b',name:'Tienda B',share:0.5}] },
+  { id:'usaquen', name:'Usaquén', tag:'Zona norte', baseVolume:35, capacity:50,
+    stores:[{id:'a',name:'Tienda A',share:0.5},{id:'b',name:'Tienda B',share:0.5}] },
+  { id:'chico', name:'Chicó', tag:'Zona rosa', baseVolume:30, capacity:45,
+    stores:[{id:'a',name:'Tienda A',share:0.5},{id:'b',name:'Tienda B',share:0.5}] },
+  { id:'suba', name:'Suba', tag:'Zona occidente', baseVolume:38, capacity:52,
+    stores:[{id:'a',name:'Tienda A',share:0.5},{id:'b',name:'Tienda B',share:0.5}] },
+  { id:'kennedy', name:'Kennedy', tag:'Zona sur-occidente', baseVolume:33, capacity:48,
+    stores:[{id:'a',name:'Tienda A',share:0.5},{id:'b',name:'Tienda B',share:0.5}] },
+  { id:'teusaquillo', name:'Teusaquillo', tag:'Zona centro', baseVolume:28, capacity:42,
+    stores:[{id:'a',name:'Tienda A',share:0.5},{id:'b',name:'Tienda B',share:0.5}] },
+];
+
+// Vecindad simplificada entre zonas (ilustrativa, no geográficamente exacta)
+const ADJACENCY = {
+  chapinero: ['usaquen', 'chico', 'teusaquillo'],
+  usaquen: ['chapinero', 'suba'],
+  chico: ['chapinero'],
+  suba: ['usaquen', 'kennedy'],
+  kennedy: ['suba', 'teusaquillo'],
+  teusaquillo: ['chapinero', 'kennedy'],
+};
+
+const QUIZ = [
+  { q: "¿Qué es un dataset?", options: ["Un conjunto de datos organizados para su análisis", "Un tipo de gráfico", "Un algoritmo de encriptación"], correct: 0 },
+  { q: "¿Qué significa limpiar los datos (data cleaning)?", options: ["Corregir o eliminar datos erróneos o incompletos", "Borrar toda la base de datos", "Cambiar el color del dashboard"], correct: 0 },
+  { q: "¿Qué es una variable categórica?", options: ["Una variable que representa categorías o grupos", "Un número decimal", "Un tipo de gráfico de barras"], correct: 0 },
+  { q: "¿Qué es una variable numérica continua?", options: ["Una variable que puede tomar cualquier valor dentro de un rango", "Una variable con solo dos opciones", "Un texto libre"], correct: 0 },
+  { q: "¿Qué es un pipeline de datos?", options: ["Una secuencia de pasos que procesan datos de principio a fin", "Un tipo de base de datos", "Un lenguaje de programación"], correct: 0 },
+  { q: "¿Qué es un dashboard?", options: ["Un panel visual con métricas e indicadores clave", "Un algoritmo de recomendación", "Un tipo de encuesta"], correct: 0 },
+  { q: "¿Qué es una métrica en ciencia de datos?", options: ["Un valor medible que resume el desempeño de algo", "Un tipo de base de datos", "Un lenguaje de consulta"], correct: 0 },
+  { q: "¿Qué es SQL?", options: ["Un lenguaje para consultar y gestionar bases de datos", "Un lenguaje de diseño gráfico", "Un tipo de red neuronal"], correct: 0 },
+  { q: "¿Qué es un join en una consulta SQL?", options: ["Combinar datos de dos o más tablas", "Eliminar una tabla", "Ordenar los datos alfabéticamente"], correct: 0 },
+  { q: "¿Qué es una API?", options: ["Una interfaz que permite que dos sistemas se comuniquen", "Un tipo de gráfico", "Un algoritmo de clasificación"], correct: 0 },
+  { q: "¿Qué es el ETL?", options: ["Extraer, transformar y cargar datos", "Un tipo de modelo predictivo", "Una red social"], correct: 0 },
+  { q: "¿Qué es un dato faltante (missing value)?", options: ["Un valor que no fue registrado en el dataset", "El valor máximo de una columna", "Un error de sintaxis"], correct: 0 },
+  { q: "¿Qué es la granularidad de un dato?", options: ["El nivel de detalle con el que se registra la información", "La velocidad del procesador", "El tamaño del archivo"], correct: 0 },
+  { q: "¿Qué es un data warehouse?", options: ["Un repositorio central que almacena datos de una organización", "Un tipo de gráfico interactivo", "Un algoritmo de búsqueda"], correct: 0 },
+  { q: "¿Qué es la visualización de datos?", options: ["Representar datos gráficamente para entenderlos mejor", "Encriptar datos sensibles", "Eliminar datos duplicados"], correct: 0 },
+  { q: "¿Qué mide la media de un conjunto de datos?", options: ["El promedio de los valores", "El valor que más se repite", "El valor máximo"], correct: 0 },
+  { q: "¿Qué mide la mediana?", options: ["El valor central cuando los datos están ordenados", "El promedio de los valores", "La suma total"], correct: 0 },
+  { q: "¿Qué es la moda en estadística?", options: ["El valor que más se repite en un conjunto de datos", "El valor promedio", "El valor más pequeño"], correct: 0 },
+  { q: "¿Qué mide la desviación estándar?", options: ["Qué tanto se dispersan los datos respecto al promedio", "El valor máximo del conjunto", "El número total de datos"], correct: 0 },
+  { q: "¿Qué es un outlier?", options: ["Un valor muy atípico frente al resto de los datos", "El promedio de los datos", "La mediana"], correct: 0 },
+  { q: "¿Qué es la correlación entre dos variables?", options: ["Qué tan relacionadas están dos variables entre sí", "La suma de dos variables", "El error de un modelo"], correct: 0 },
+  { q: "Correlación no implica...", options: ["Causalidad", "Relación", "Datos"], correct: 0 },
+  { q: "¿Qué es una muestra en estadística?", options: ["Un subconjunto representativo de una población", "El total de todos los datos posibles", "Un tipo de gráfico"], correct: 0 },
+  { q: "¿Qué es un intervalo de confianza?", options: ["Un rango que probablemente contiene el valor real", "El error exacto de una predicción", "El promedio de una muestra"], correct: 0 },
+  { q: "¿Qué es un p-value en un test estadístico?", options: ["Una medida de qué tan probable es el resultado por azar", "El promedio de los datos", "El tamaño de la muestra"], correct: 0 },
+  { q: "¿Qué es la distribución normal?", options: ["Una distribución simétrica en forma de campana", "Un tipo de gráfico de barras", "Un algoritmo de clasificación"], correct: 0 },
+  { q: "¿Qué es un histograma?", options: ["Un gráfico que muestra la frecuencia de valores en rangos", "Una tabla de texto", "Un tipo de encuesta"], correct: 0 },
+  { q: "¿Qué es la varianza?", options: ["Qué tanto se alejan los datos de su promedio, al cuadrado", "El valor mínimo del conjunto", "El total de observaciones"], correct: 0 },
+  { q: "¿Qué es un percentil?", options: ["El valor bajo el cual cae un porcentaje de los datos", "El promedio de los datos", "La moda"], correct: 0 },
+  { q: "¿Qué es el sesgo (bias) en una muestra?", options: ["Una distorsión que hace que la muestra no represente bien a la población", "El promedio ideal", "Un tipo de gráfico"], correct: 0 },
+  { q: "¿Qué es machine learning?", options: ["Sistemas que aprenden patrones a partir de datos", "Un tipo de hardware", "Un lenguaje de programación"], correct: 0 },
+  { q: "¿Qué es un modelo supervisado?", options: ["Uno que aprende a partir de datos con respuestas conocidas", "Uno que no usa datos", "Uno que se entrena sin ejemplos"], correct: 0 },
+  { q: "¿Qué es un modelo no supervisado?", options: ["Uno que encuentra patrones sin respuestas etiquetadas", "Uno que solo predice números", "Uno que necesita miles de reglas manuales"], correct: 0 },
+  { q: "¿Qué es overfitting?", options: ["Cuando un modelo memoriza los datos de entrenamiento y falla con datos nuevos", "Cuando un modelo es demasiado simple", "Cuando faltan datos"], correct: 0 },
+  { q: "¿Qué es underfitting?", options: ["Cuando un modelo es demasiado simple para capturar los patrones", "Cuando un modelo memoriza todo", "Cuando hay demasiados datos"], correct: 0 },
+  { q: "¿Qué es un conjunto de entrenamiento (training set)?", options: ["Los datos que usa el modelo para aprender", "Los datos que se descartan", "El resultado final del modelo"], correct: 0 },
+  { q: "¿Qué es un conjunto de prueba (test set)?", options: ["Datos nuevos para evaluar qué tan bien generaliza el modelo", "Los mismos datos de entrenamiento", "Un tipo de gráfico"], correct: 0 },
+  { q: "¿Qué es la regresión lineal?", options: ["Un modelo que predice un valor numérico a partir de una relación lineal", "Un algoritmo de encriptación", "Una técnica de limpieza de datos"], correct: 0 },
+  { q: "¿Qué es la clasificación en machine learning?", options: ["Predecir a qué categoría pertenece un dato", "Ordenar datos alfabéticamente", "Calcular el promedio de un dataset"], correct: 0 },
+  { q: "¿Qué es un árbol de decisión?", options: ["Un modelo que toma decisiones dividiendo datos en preguntas sucesivas", "Un tipo de gráfico de líneas", "Una base de datos"], correct: 0 },
+  { q: "¿Qué es una red neuronal?", options: ["Un modelo inspirado en el cerebro, con capas de nodos", "Una base de datos distribuida", "Un tipo de encuesta"], correct: 0 },
+  { q: "¿Qué es el filtrado colaborativo?", options: ["Recomendar según lo que consumieron usuarios parecidos", "Encriptar los datos del usuario", "Clasificar imágenes automáticamente"], correct: 0 },
+  { q: "¿Qué es el filtrado basado en contenido?", options: ["Recomendar según similitud entre atributos de los productos", "Recomendar al azar", "Recomendar solo lo más barato"], correct: 0 },
+  { q: "¿Qué es el market basket analysis?", options: ["Encontrar productos que suelen comprarse juntos", "Calcular el precio óptimo", "Medir la satisfacción del cliente"], correct: 0 },
+  { q: "¿Qué es la precisión (precision) de un modelo?", options: ["De lo que el modelo predijo como positivo, cuánto era correcto", "El total de datos usados", "La velocidad del modelo"], correct: 0 },
+  { q: "¿Qué es el recall de un modelo?", options: ["De todos los positivos reales, cuántos detectó el modelo", "El tiempo que tarda en entrenar", "El número de variables usadas"], correct: 0 },
+  { q: "¿Qué es un hiperparámetro?", options: ["Una configuración del modelo que se define antes de entrenarlo", "Un dato del dataset", "Un tipo de gráfico"], correct: 0 },
+  { q: "¿Qué es el aprendizaje por refuerzo?", options: ["Un modelo que aprende probando acciones y recibiendo recompensas", "Un modelo que solo usa reglas fijas", "Un tipo de base de datos"], correct: 0 },
+  { q: "¿Qué es un algoritmo?", options: ["Una secuencia de pasos para resolver un problema", "Un tipo de gráfico", "Una base de datos"], correct: 0 },
+  { q: "¿Qué es la generalización de un modelo?", options: ["Qué tan bien funciona con datos que nunca vio", "Qué tan rápido entrena", "Cuántos datos usa"], correct: 0 },
+  { q: "¿Qué es un A/B test?", options: ["Comparar dos versiones para ver cuál funciona mejor", "Un tipo de red neuronal", "Un algoritmo de encriptación"], correct: 0 },
+  { q: "En un A/B test, ¿qué es el grupo de control?", options: ["El grupo que no recibe el cambio, sirve de referencia", "El grupo que decide el experimento", "El grupo con más usuarios"], correct: 0 },
+  { q: "¿Qué es la significancia estadística en un experimento?", options: ["La evidencia de que un resultado no se debe al azar", "El tamaño de la muestra", "El promedio del experimento"], correct: 0 },
+  { q: "¿Por qué es importante asignar usuarios al azar en un A/B test?", options: ["Para que los grupos sean comparables y justos", "Para que el experimento dure menos", "Para ahorrar dinero"], correct: 0 },
+  { q: "¿Qué es una métrica norte (north star metric)?", options: ["El indicador principal que refleja el éxito de un producto", "El promedio de todas las métricas", "La métrica más fácil de medir"], correct: 0 },
+  { q: "¿Qué es el efecto novedad en un experimento?", options: ["Un cambio de comportamiento temporal solo porque algo es nuevo", "Un error de programación", "Un tipo de gráfico"], correct: 0 },
+  { q: "¿Qué es la tasa de conversión?", options: ["El porcentaje de usuarios que completan una acción deseada", "El número total de usuarios", "El tiempo de carga de una app"], correct: 0 },
+  { q: "¿Qué es la contaminación entre grupos en un experimento (spillover)?", options: ["Cuando un grupo influye o afecta al otro grupo del test", "Cuando hay datos duplicados", "Cuando el experimento termina antes de tiempo"], correct: 0 },
+  { q: "¿Qué es un holdout group?", options: ["Un grupo que no recibe ningún cambio, para medir el efecto real", "El grupo más grande del experimento", "El grupo que prueba todas las versiones"], correct: 0 },
+  { q: "¿Qué es multivariate testing?", options: ["Probar varias variables o combinaciones al mismo tiempo", "Probar solo dos opciones", "Un tipo de gráfico de dispersión"], correct: 0 },
+  { q: "¿Qué mide el ETA que ves en una app de delivery?", options: ["El tiempo estimado de llegada del pedido", "El precio total del pedido", "La distancia en kilómetros"], correct: 0 },
+  { q: "¿Qué pasa cuando la demanda supera la capacidad de repartidores en una zona?", options: ["El ETA sube o la zona puede saturarse", "El ETA siempre baja", "Los precios bajan automáticamente"], correct: 0 },
+  { q: "¿Por qué las apps de delivery a veces suben el ETA mostrado?", options: ["Para ser realistas cuando hay más pedidos que couriers disponibles", "Porque el usuario pidió más comida", "Por error del sistema"], correct: 0 },
+  { q: "¿Qué es un dark store?", options: ["Una bodega usada solo para preparar pedidos de delivery, sin atención al público", "Una tienda física normal", "Un centro de datos"], correct: 0 },
+  { q: "¿Qué es la elasticidad de precio?", options: ["Qué tanto cambia la demanda cuando cambia el precio", "El precio fijo de un producto", "El costo de producción"], correct: 0 },
+  { q: "¿Qué es el churn de usuarios?", options: ["La proporción de usuarios que dejan de usar un producto", "El número de nuevos usuarios", "El promedio de pedidos por usuario"], correct: 0 },
+  { q: "¿Qué es el LTV (lifetime value) de un cliente?", options: ["El valor total que un cliente genera durante toda su relación con la empresa", "El primer pedido de un cliente", "El costo de adquirir un cliente"], correct: 0 },
+  { q: "¿Qué es el CAC (costo de adquisición de cliente)?", options: ["Lo que cuesta conseguir un nuevo cliente", "El precio promedio de un pedido", "El número de repartidores activos"], correct: 0 },
+  { q: "¿Por qué una empresa de delivery cerraría temporalmente una zona sobrecargada?", options: ["Para proteger la experiencia y evitar retrasos excesivos", "Para bajar sus ingresos", "Porque los repartidores lo piden así"], correct: 0 },
+  { q: "¿Qué es una promoción desde el punto de vista de datos?", options: ["Un incentivo que busca aumentar la demanda de forma medible", "Un error en el sistema de precios", "Una encuesta de satisfacción"], correct: 0 },
+  { q: "¿Qué es el surge pricing?", options: ["Aumentar el precio temporalmente cuando la demanda supera la oferta", "Bajar el precio los fines de semana", "Un descuento fijo permanente"], correct: 0 },
+  { q: "¿Qué área suele decidir cuánto ETA mostrar al usuario?", options: ["Una combinación de producto y ciencia de datos", "Solo el equipo de marketing", "Solo los repartidores"], correct: 0 },
+  { q: "¿Qué es un SLA (acuerdo de nivel de servicio)?", options: ["Un compromiso medible sobre la calidad de un servicio", "Un tipo de descuento", "Un algoritmo de recomendación"], correct: 0 },
+  { q: "¿Qué es la capacidad operativa de una zona?", options: ["Cuántos pedidos puede atender bien con los recursos disponibles", "El número total de usuarios registrados", "El precio promedio de los productos"], correct: 0 },
+  { q: "¿Qué es un cuello de botella (bottleneck) en logística?", options: ["El punto del proceso que limita la velocidad de todo el sistema", "El pedido más caro del día", "El repartidor más rápido"], correct: 0 },
+  { q: "¿Qué significa IA?", options: ["Inteligencia artificial", "Internet automático", "Información analizada"], correct: 0 },
+  { q: "¿Qué es la nube (cloud) en tecnología?", options: ["Servidores remotos accesibles por internet", "Un tipo de gráfico", "Una base de datos local"], correct: 0 },
+  { q: "¿Qué es big data?", options: ["Conjuntos de datos tan grandes o complejos que requieren herramientas especiales", "Un tipo de gráfico de barras", "Un lenguaje de programación"], correct: 0 },
+  { q: "¿Qué es un servidor?", options: ["Una computadora que provee recursos o servicios a otras", "Un tipo de gráfico", "Un algoritmo de búsqueda"], correct: 0 },
+  { q: "¿Qué es código abierto (open source)?", options: ["Software cuyo código puede ser visto y modificado libremente", "Software gratuito solo por un tiempo", "Un tipo de virus"], correct: 0 },
+  { q: "¿Qué es un bug en programación?", options: ["Un error en el código", "Una nueva funcionalidad", "Un tipo de base de datos"], correct: 0 },
+  { q: "¿Qué es GitHub?", options: ["Una plataforma para almacenar y colaborar en código", "Un lenguaje de programación", "Un tipo de red neuronal"], correct: 0 },
+  { q: "¿Qué es un commit en control de versiones?", options: ["Un registro de cambios guardado en el historial del código", "Un tipo de error", "Un servidor"], correct: 0 },
+  { q: "¿Qué significa UX?", options: ["Experiencia de usuario", "Unidad de exportación", "Un tipo de base de datos"], correct: 0 },
+  { q: "¿Qué es un producto mínimo viable (MVP)?", options: ["La versión más simple de un producto que ya aporta valor", "La versión final y perfecta de un producto", "Un tipo de encuesta"], correct: 0 },
+  { q: "¿Por qué es importante proteger los datos personales de los usuarios?", options: ["Para respetar su privacidad y evitar usos indebidos", "Porque ocupan mucho espacio", "Porque así lo pide el diseño gráfico"], correct: 0 },
+  { q: "¿Qué es un sesgo algorítmico?", options: ["Cuando un modelo perjudica sistemáticamente a un grupo de personas", "Un error de sintaxis en el código", "Un tipo de gráfico"], correct: 0 },
+  { q: "¿Qué significa anonimizar datos?", options: ["Quitar información que permita identificar a una persona", "Borrar todos los datos", "Traducir los datos a otro idioma"], correct: 0 },
+  { q: "¿Por qué es importante ser transparente sobre el uso de datos?", options: ["Para generar confianza y cumplir con la ética y la ley", "Para vender más publicidad", "Para acelerar los modelos"], correct: 0 },
+  { q: "¿Qué es el consentimiento informado en el uso de datos?", options: ["Que el usuario sepa y acepte cómo se usarán sus datos", "Un tipo de algoritmo", "Un formulario técnico sin importancia"], correct: 0 },
+  { q: "¿Qué es un KPI?", options: ["Un indicador clave de desempeño", "Un tipo de base de datos", "Un lenguaje de programación"], correct: 0 },
+  { q: "¿Qué es escalabilidad en un sistema?", options: ["La capacidad de crecer manejando más carga sin romperse", "El tamaño físico de un servidor", "El precio de un producto"], correct: 0 },
+  { q: "¿Qué es la automatización en un proceso?", options: ["Hacer que tareas se ejecuten sin intervención manual repetida", "Eliminar por completo el trabajo humano", "Un tipo de gráfico"], correct: 0 },
+  { q: "¿Qué es una hipótesis en un experimento?", options: ["Una suposición que se pone a prueba con datos", "El resultado final del experimento", "Un tipo de gráfico"], correct: 0 },
+  { q: "¿Qué representa un funnel o embudo de conversión?", options: ["Los pasos que sigue un usuario hasta completar una acción", "Un tipo de base de datos", "Un algoritmo de encriptación"], correct: 0 },
+  { q: "¿Qué es feature engineering?", options: ["Crear o transformar variables para mejorar un modelo", "Diseñar la interfaz visual de una app", "Escribir documentación técnica"], correct: 0 },
+  { q: "¿Qué es un dataset balanceado?", options: ["Uno donde las categorías están representadas en proporciones similares", "Uno con muchos datos faltantes", "Uno ordenado alfabéticamente"], correct: 0 },
+  { q: "¿Qué es clustering?", options: ["Agrupar datos similares sin usar etiquetas previas", "Ordenar datos de mayor a menor", "Eliminar datos duplicados"], correct: 0 },
+  { q: "¿Qué es la latencia en un sistema?", options: ["El tiempo que tarda en responder una solicitud", "El número de usuarios activos", "El costo de un servidor"], correct: 0 },
+  { q: "¿Qué carrera estudia cómo convertir datos en decisiones?", options: ["Ciencia de datos", "Diseño gráfico", "Literatura"], correct: 0 },
+];
+
+const BASE_ETA = 20; // minutes
+const SURGE_FACTOR = 26; // how hard eta reacts to overload
+const PROMO_BOOST_RATIO = 0.55; // promo adds this fraction of capacity as extra volume
+const DECAY_RATE = 0.06; // how fast volume returns to baseline per tick
+
+const ORGANIC_CHANCE = 0.55; // probability a zone gets an unprompted order each tick
+const ORGANIC_MIN = 2, ORGANIC_MAX = 6; // size of an organic order, in demand units
+
+const AUTO_CLOSE_STRESS = 1.6; // stress ratio at which a zone auto-closes (overloaded)
+const AUTO_REOPEN_STRESS = 0.9; // must cool below this to be eligible to reopen
+const MIN_CLOSED_TICKS = 4; // minimum ticks a zone stays closed before it can reopen
+const ETA_BOOST_STEP = 5; // minutes added/removed per Ops click
+const ETA_BOOST_MAX = 40; // cap on manual ETA inflation
+
+let speedMultiplier = 1;
+let organicEnabled = true;
+let totalOrders = 0;
+let tickHandle = null;
+let isHost = false;
+let myRole = null; // 'cliente' | 'operaciones', chosen once per device
+const processedOrderKeys = new Set();
+const processedLogKeys = new Set();
+const cooldownUntil = {}; // per-zone local cooldown timestamps, student taps
+let blockedEdges = new Set(); // "target|source" — orders from `source` home zone into `target` are blocked
+
+function edgeKey(target, source){ return `${target}|${source}`; }
+function isEdgeBlocked(target, source){ return blockedEdges.has(edgeKey(target, source)); }
+
+function effectiveCapacity(s){
+  const openShare = s.stores.reduce((sum, st) => sum + (st.closed ? 0 : st.share), 0);
+  return s.capacity * openShare;
+}
+
+function isZoneClosed(s){
+  return s.manualClosed || s.autoClosed || effectiveCapacity(s) <= 0;
+}
+
+const state = {};
+ZONES.forEach(z => {
+  state[z.id] = {
+    ...z,
+    stores: z.stores.map(st => ({ ...st, closed: false })),
+    volume: z.baseVolume,
+    eta: BASE_ETA,
+    stress: z.baseVolume / z.capacity,
+    autoClosed: false,
+    manualClosed: false,
+    closedTicks: 0,
+    etaBoost: 0,
+  };
+});
+
+const quizState = {};
+ZONES.forEach(z => {
+  quizState[z.id] = { qIndex: Math.floor(Math.random() * QUIZ.length), unlocked: false, wrong: false };
+});
+
+const grid = document.getElementById('zoneGrid');
+const healthPanelEl = document.getElementById('healthPanel');
+const studentGrid = document.getElementById('studentGrid');
+const logEl = document.getElementById('log');
+const totalOrdersEl = document.getElementById('totalOrders');
+const avgEtaEl = document.getElementById('avgEta');
+const hostViewEl = document.getElementById('hostView');
+const studentViewEl = document.getElementById('studentView');
+const studentTitleEl = document.getElementById('studentTitle');
+const studentSubEl = document.getElementById('studentSub');
+const modeToggleEl = document.getElementById('modeToggle');
+const modeHintEl = document.getElementById('modeHint');
+const passwordModalEl = document.getElementById('passwordModal');
+const passwordCardEl = document.getElementById('passwordCard');
+const passwordInputEl = document.getElementById('passwordInput');
+const passwordErrorEl = document.getElementById('passwordError');
+
+function colorForStress(stress){
+  if (stress < 0.75) return '#078A72';
+  if (stress < 1.15) return '#C77A00';
+  return '#D63846';
+}
+
+let myZone = null; // the zone this student picked — null until chosen
+
+function buildStudentCardHtml(z, opts){
+  opts = opts || {};
+  const s = state[z.id];
+  const isClosed = isZoneClosed(s);
+  const blocked = !!opts.blocked;
+  const color = colorForStress(s.stress);
+  const onCooldown = (cooldownUntil[z.id] || 0) > Date.now();
+  const qs = quizState[z.id];
+
+  let bodyHtml;
+  if (isClosed){
+    bodyHtml = `<button class="orderBtn" disabled>🚫 Zona cerrada</button>`;
+  } else if (blocked){
+    bodyHtml = `<button class="orderBtn" disabled>🚫 Bloqueado para tu zona</button>`;
+  } else if (onCooldown){
+    bodyHtml = `
+      <button class="orderBtn sent" disabled>✅ Pedido enviado</button>
+      <div class="sz-note">¡Gracias! Responde otra pregunta para volver a pedir en unos segundos.</div>
+    `;
+  } else if (!qs.unlocked){
+    const question = QUIZ[qs.qIndex];
+    const optsHtml = question.options.map((opt, i) => `
+      <button class="quiz-opt" data-quiz-zone="${z.id}" data-quiz-opt="${i}">${opt}</button>
+    `).join('');
+    const msgHtml = qs.wrong
+      ? `<div class="quiz-msg wrong">Casi... inténtalo de nuevo</div>`
+      : `<div class="quiz-msg">Responde correctamente para desbloquear tu pedido</div>`;
+    bodyHtml = `
+      <div class="quiz">
+        <div class="quiz-q">${question.q}</div>
+        ${optsHtml}
+        ${msgHtml}
+      </div>
+    `;
+  } else {
+    bodyHtml = `
+      <div class="quiz-msg right">🎉 ¡Correcto! Ya puedes pedir</div>
+      <button class="orderBtn" data-order-zone="${z.id}">🛵 Pedir ahora</button>
+    `;
+  }
+
+  return `
+    <div class="sz-card" style="--zone-color:${color}">
+      <div class="sz-name">${s.name}${opts.homeTag ? ' <span style="font-size:10px;color:var(--text-dim);">(tu zona)</span>' : ''}</div>
+      <div class="sz-tag">${s.tag}</div>
+      <div class="sz-eta">${isClosed ? '—' : Math.round(s.eta) + ' min'}</div>
+      <div class="sz-eta-label">${isClosed ? 'zona cerrada' : 'ETA actual'}</div>
+      ${bodyHtml}
+    </div>
+  `;
+}
+
+function renderRolePicker(){
+  studentTitleEl.textContent = 'Elige tu rol';
+  studentSubEl.textContent = 'Unos serán clientes, otros serán el equipo de operaciones.';
+  studentGrid.innerHTML = `
+    <div class="sz-card" style="--zone-color:${'#078A72'}">
+      <div class="sz-name">Cliente</div>
+      <div class="sz-tag">Pides comida desde tu zona</div>
+      <button class="pickBtn" data-pick-role="cliente">Soy Cliente</button>
+    </div>
+    <div class="sz-card" style="--zone-color:${'#FF4F1F'}">
+      <div class="sz-name">Operaciones</div>
+      <div class="sz-tag">Decides qué zonas y tiendas operan</div>
+      <button class="pickBtn" data-pick-role="operaciones">Soy Operaciones</button>
+    </div>
+  `;
+  document.querySelectorAll('[data-pick-role]').forEach(btn=>{
+    btn.addEventListener('click', () => {
+      myRole = btn.getAttribute('data-pick-role');
+      if (myRole === 'cliente' && !myZone){
+        myZone = ZONES[Math.floor(Math.random() * ZONES.length)].id;
+      }
+      render();
+    });
+  });
+}
+
+function renderClientPane(){
+  const home = ZONES.find(zz => zz.id === myZone);
+  const neighborIds = ADJACENCY[myZone] || [];
+  studentTitleEl.textContent = `Tu zona: ${home.name}`;
+  studentSubEl.textContent = 'Puedes pedir en tu zona o en zonas vecinas — no puedes cambiar tu zona asignada.';
+
+  let html = buildStudentCardHtml(home, { homeTag: true });
+  neighborIds.forEach(nid => {
+    const nz = ZONES.find(zz => zz.id === nid);
+    const blocked = isEdgeBlocked(nid, myZone);
+    html += buildStudentCardHtml(nz, { blocked });
+  });
+  studentGrid.innerHTML = html;
+
+  document.querySelectorAll('.orderBtn[data-order-zone]').forEach(btn=>{
+    btn.addEventListener('click', () => placeOrder(btn.getAttribute('data-order-zone')));
+  });
+  document.querySelectorAll('.quiz-opt').forEach(btn=>{
+    btn.addEventListener('click', () => answerQuiz(btn.getAttribute('data-quiz-zone'), parseInt(btn.getAttribute('data-quiz-opt'), 10)));
+  });
+}
+
+function renderOpsPane(){
+  studentTitleEl.textContent = 'Panel de Operaciones';
+  studentSubEl.textContent = 'Decide qué zonas y tiendas operan, y desde dónde se puede pedir.';
+
+  studentGrid.innerHTML = ZONES.map(z => {
+    const s = state[z.id];
+    const closed = isZoneClosed(s);
+    const color = colorForStress(s.stress);
+    const storesHtml = s.stores.map(st => `
+      <button class="quiz-opt" data-store-zone="${z.id}" data-store-id="${st.id}" style="margin-bottom:5px;">
+        ${st.closed ? '🔴' : '🟢'} ${st.name}: ${st.closed ? 'Cerrada' : 'Abierta'}
+      </button>
+    `).join('');
+    const neighborHtml = (ADJACENCY[z.id] || []).map(nid => {
+      const nz = ZONES.find(zz=>zz.id===nid);
+      const blocked = isEdgeBlocked(z.id, nid);
+      return `
+        <button class="quiz-opt" data-edge-target="${z.id}" data-edge-source="${nid}" style="margin-bottom:5px;">
+          ${blocked ? '🚫' : '✅'} Pedidos desde ${nz.name}: ${blocked ? 'Bloqueados' : 'Permitidos'}
+        </button>
+      `;
+    }).join('');
+
+    return `
+      <div class="sz-card" style="--zone-color:${color}; text-align:left;">
+        <div class="sz-name" style="text-align:center;">${s.name}</div>
+        <div class="sz-tag" style="text-align:center;">${closed ? 'Cerrada' : Math.round(s.eta) + ' min · ' + Math.round(s.stress*100) + '% de capacidad'}</div>
+        <div class="quiz" style="margin-top:12px;">
+          <div class="quiz-q">Zona</div>
+          <button class="quiz-opt" data-zone-toggle="${z.id}">${s.manualClosed ? '🔓 Reabrir zona' : '🔒 Cerrar zona completa'}</button>
+          <div class="quiz-q" style="margin-top:10px;">Tiendas</div>
+          ${storesHtml}
+          <div class="quiz-q" style="margin-top:10px;">ETA manual: +${s.etaBoost || 0} min</div>
+          <button class="quiz-opt" data-eta-zone="${z.id}" data-eta-dir="1">➕ Subir ETA ${ETA_BOOST_STEP} min</button>
+          <button class="quiz-opt" data-eta-zone="${z.id}" data-eta-dir="-1">➖ Bajar ETA ${ETA_BOOST_STEP} min</button>
+          ${neighborHtml ? `<div class="quiz-q" style="margin-top:10px;">Tráfico entre zonas</div>${neighborHtml}` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  document.querySelectorAll('[data-zone-toggle]').forEach(btn=>{
+    btn.addEventListener('click', () => opsToggleZone(btn.getAttribute('data-zone-toggle')));
+  });
+  document.querySelectorAll('[data-store-zone]').forEach(btn=>{
+    btn.addEventListener('click', () => opsToggleStore(btn.getAttribute('data-store-zone'), btn.getAttribute('data-store-id')));
+  });
+  document.querySelectorAll('[data-eta-zone]').forEach(btn=>{
+    btn.addEventListener('click', () => opsAdjustEta(btn.getAttribute('data-eta-zone'), parseInt(btn.getAttribute('data-eta-dir'), 10)));
+  });
+  document.querySelectorAll('[data-edge-target]').forEach(btn=>{
+    btn.addEventListener('click', () => opsToggleEdge(btn.getAttribute('data-edge-target'), btn.getAttribute('data-edge-source')));
+  });
+}
+
+function renderStudentPane(){
+  if (!myRole){
+    renderRolePicker();
+  } else if (myRole === 'cliente'){
+    renderClientPane();
+  } else {
+    renderOpsPane();
+  }
+}
+
+function renderHealthPanel(){
+  let totalVolume = 0, totalCap = 0, openCount = 0, closedCount = 0, closedStores = 0, blockedCount = blockedEdges.size;
+  ZONES.forEach(z => {
+    const s = state[z.id];
+    totalVolume += s.volume;
+    totalCap += effectiveCapacity(s);
+    if (isZoneClosed(s)) closedCount++; else openCount++;
+    closedStores += s.stores.filter(st => st.closed).length;
+  });
+  const healthPct = totalCap > 0 ? Math.min(100, Math.round((totalVolume / totalCap) * 100)) : 100;
+  const healthColor = healthPct < 75 ? '#078A72' : healthPct < 115 ? '#C77A00' : '#D63846';
+  healthPanelEl.innerHTML = `
+    <div class="health-item"><div class="health-n" style="color:${healthColor}">${healthPct}%</div><div class="health-l">Capacidad usada</div></div>
+    <div class="health-item"><div class="health-n">${openCount}/${ZONES.length}</div><div class="health-l">Zonas abiertas</div></div>
+    <div class="health-item"><div class="health-n">${closedStores}</div><div class="health-l">Tiendas cerradas</div></div>
+    <div class="health-item"><div class="health-n">${blockedCount}</div><div class="health-l">Rutas bloqueadas</div></div>
+  `;
+}
+
+function render(){
+  let etaSum = 0, openZones = 0;
+
+  if (isHost) grid.innerHTML = '';
+
+  ZONES.forEach(z => {
+    const s = state[z.id];
+    const isClosed = isZoneClosed(s);
+    if (!isClosed) { etaSum += s.eta; openZones++; }
+
+    if (isHost){
+      const color = colorForStress(s.stress);
+      const pct = Math.min(100, s.stress * 100);
+      const card = document.createElement('div');
+      card.className = 'zone' + (isClosed ? ' closed' : '');
+      card.style.setProperty('--zone-color', color);
+
+      const etaHtml = isClosed
+        ? `Zona cerrada`
+        : `${Math.round(s.eta)}<span style="font-size:16px;">min</span>`;
+
+      const storesClosed = s.stores.filter(st=>st.closed).length;
+      const badge = s.manualClosed
+        ? `<div class="closed-badge badge-manual">🔒 Cierre manual</div>`
+        : s.autoClosed
+          ? `<div class="closed-badge badge-auto">⛔ Saturada — auto-cerrada</div>`
+          : storesClosed > 0
+            ? `<div class="closed-badge badge-manual">🏬 ${storesClosed} tienda(s) cerrada(s)</div>`
+            : '';
+
+      const promoBtnHtml = isClosed
+        ? `<button class="promoBtn" disabled>🔔 No disponible</button>`
+        : `<button data-zone="${z.id}" class="promoBtn">🔔 Enviar promoción</button>`;
+
+      const toggleLabel = s.manualClosed ? '🔓 Reabrir zona (manual)' : '🔒 Cerrar zona (manual)';
+
+      card.innerHTML = `
+        <div class="zone-head">
+          <div>
+            <div class="zone-name">${s.name}</div>
+            <div class="zone-tag">${s.tag}</div>
+          </div>
+        </div>
+        <div class="eta-block">
+          <div class="eta-num">${etaHtml}</div>
+          <div class="eta-label">${isClosed ? 'No se aceptan nuevos pedidos' : 'ETA mostrado al usuario'}${s.etaBoost ? ' (+' + s.etaBoost + ' manual)' : ''}</div>
+          ${badge}
+        </div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div>
+        <div class="zone-meta">
+          <span>Demanda: ${Math.round(s.volume)}</span>
+          <span>Capacidad: ${Math.round(effectiveCapacity(s))}</span>
+        </div>
+        ${promoBtnHtml}
+        <button data-zone-toggle="${z.id}" class="closeToggle">${toggleLabel}</button>
+      `;
+      grid.appendChild(card);
+    }
+  });
+
+  totalOrdersEl.textContent = totalOrders;
+  avgEtaEl.textContent = openZones ? Math.round(etaSum / openZones) + ' min' : '—';
+
+  if (isHost){
+    renderHealthPanel();
+    document.querySelectorAll('.promoBtn:not([disabled])').forEach(btn=>{
+      btn.addEventListener('click', () => sendPromo(btn.getAttribute('data-zone')));
+    });
+    document.querySelectorAll('.closeToggle').forEach(btn=>{
+      btn.addEventListener('click', () => toggleManualClose(btn.getAttribute('data-zone-toggle')));
+    });
+  } else {
+    renderStudentPane();
+  }
+}
+
+function log(msg, hot){
+  const line = document.createElement('div');
+  if (hot) line.className = 'hot';
+  line.innerHTML = msg;
+  logEl.prepend(line);
+  while (logEl.children.length > 40) logEl.removeChild(logEl.lastChild);
+}
+
+function pulseZone(id){
+  const cards = document.querySelectorAll('.zone');
+  cards.forEach(c => {
+    if (c.querySelector(`[data-zone="${id}"]`)) {
+      c.classList.add('pulse');
+      setTimeout(()=>c.classList.remove('pulse'), 1100);
+    }
+  });
+}
+
+function sendPromo(id){
+  const s = state[id];
+  if (isZoneClosed(s)) return;
+  const boost = s.capacity * PROMO_BOOST_RATIO;
+  s.volume += boost;
+  const newOrders = Math.round(boost);
+  totalOrders += newOrders;
+  pulseZone(id);
+  log(`🔔 Promo enviada a <span>${s.name}</span> — +${newOrders} pedidos entrantes`, true);
+}
+
+function toggleManualClose(id){
+  const s = state[id];
+  s.manualClosed = !s.manualClosed;
+  if (s.manualClosed){
+    log(`🔒 <span>${s.name}</span> cerrada manualmente — este grupo ya no puede pedir`, true);
+  } else {
+    log(`🔓 <span>${s.name}</span> reabierta manualmente`);
+  }
+  render();
+}
+
+function setMode(host){
+  isHost = host;
+  hostViewEl.classList.toggle('hidden', !host);
+  studentViewEl.classList.toggle('hidden', host);
+  modeToggleEl.textContent = host ? 'Volver a vista de participante' : 'Abrir tablero general';
+  modeHintEl.innerHTML = host
+    ? '<b>Tablero general activo.</b> Comparte este mismo enlace con los participantes; cada dispositivo puede elegir Cliente u Operaciones.'
+    : '<b>Vista de participante.</b> Elige un rol para entrar a la simulación. Si estás presentando, abre el tablero general.';
+  render();
+}
+
+document.getElementById('modeToggle').addEventListener('click', ()=>{
+  if (isHost){
+    setMode(false); // leaving host mode never needs a password
+  } else {
+    openPasswordModal();
+  }
+});
+
+function openPasswordModal(){
+  passwordErrorEl.textContent = '';
+  passwordInputEl.value = '';
+  passwordModalEl.classList.remove('hidden');
+  setTimeout(()=> passwordInputEl.focus(), 30);
+}
+
+function closePasswordModal(){
+  passwordModalEl.classList.add('hidden');
+}
+
+async function submitPassword(){
+  const password = passwordInputEl.value;
+  passwordErrorEl.textContent = 'Verificando…';
+  try {
+    const response = await fetch('/api/presenter/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (response.ok) {
+      closePasswordModal();
+      setMode(true);
+      return;
+    }
+    passwordErrorEl.textContent = 'Contraseña incorrecta';
+    passwordCardEl.classList.add('shake');
+    setTimeout(()=> passwordCardEl.classList.remove('shake'), 300);
+    passwordInputEl.value = '';
+    passwordInputEl.focus();
+  } catch (error) {
+    passwordErrorEl.textContent = 'No fue posible conectar con el servidor';
+  }
+}
+
+document.getElementById('passwordSubmit').addEventListener('click', submitPassword);
+document.getElementById('passwordCancel').addEventListener('click', closePasswordModal);
+passwordInputEl.addEventListener('keydown', (e)=>{
+  if (e.key === 'Enter') submitPassword();
+});
+
+function answerQuiz(zoneId, optionIndex){
+  const qs = quizState[zoneId];
+  const question = QUIZ[qs.qIndex];
+  if (optionIndex === question.correct){
+    qs.unlocked = true;
+    qs.wrong = false;
+  } else {
+    qs.wrong = true;
+  }
+  render();
+}
+
+async function placeOrder(zoneId){
+  const s = state[zoneId];
+  if (!s || isZoneClosed(s)) return;
+  if (!isHost){
+    if (myRole !== 'cliente') return;
+    const allowed = zoneId === myZone || (ADJACENCY[myZone] || []).includes(zoneId);
+    if (!allowed) return;
+    if (zoneId !== myZone && isEdgeBlocked(zoneId, myZone)) return;
+  }
+  cooldownUntil[zoneId] = Date.now() + 5000;
+  // lock the quiz again with a fresh question for next time
+  quizState[zoneId] = { qIndex: Math.floor(Math.random() * QUIZ.length), unlocked: false, wrong: false };
+  render();
+
+  const key = `order:${zoneId}:${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  processedOrderKeys.add(key); // don't double-count this tap when we poll shared storage
+
+  // optimistic local update so the tapper sees it instantly
+  const size = Math.round(ORGANIC_MIN + Math.random() * (ORGANIC_MAX - ORGANIC_MIN));
+  s.volume += size;
+  totalOrders += size;
+
+  try{
+    await window.storage.set(key, JSON.stringify({ zone: zoneId, ts: Date.now() }), true);
+  } catch(e){
+    // best-effort — the tapper's own view already updated even if the sync failed
+  }
+}
+
+async function pollSharedOrders(){
+  try{
+    const res = await window.storage.list('order:', true);
+    if (!res || !res.keys || !res.keys.length) return;
+    let sawNew = false;
+    for (const key of res.keys){
+      if (processedOrderKeys.has(key)) {
+        if (isHost) window.storage.delete(key, true).catch(()=>{});
+        continue;
+      }
+      processedOrderKeys.add(key);
+      const parts = key.split(':');
+      const zoneId = parts[1];
+      const s = state[zoneId];
+      if (s && !isZoneClosed(s)){
+        const size = Math.round(ORGANIC_MIN + Math.random() * (ORGANIC_MAX - ORGANIC_MIN));
+        s.volume += size;
+        totalOrders += size;
+        pulseZone(zoneId);
+        sawNew = true;
+        if (isHost) log(`📱 Pedido de un estudiante en <span>${s.name}</span>`);
+      }
+      if (isHost) window.storage.delete(key, true).catch(()=>{});
+    }
+    if (sawNew) render();
+  } catch(e){
+    // no shared orders yet, or storage briefly unavailable — ignore and retry next poll
+  }
+}
+
+function pushLogEvent(msg){
+  const key = `log:${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  processedLogKeys.add(key);
+  window.storage.set(key, JSON.stringify({ msg }), true).catch(()=>{});
+}
+
+function opsToggleZone(zoneId){
+  const s = state[zoneId];
+  s.manualClosed = !s.manualClosed;
+  pushLogEvent(s.manualClosed
+    ? `🔒 Operaciones cerró <span>${s.name}</span> por completo`
+    : `🔓 Operaciones reabrió <span>${s.name}</span>`);
+  pushOpsState();
+  render();
+}
+
+function opsToggleStore(zoneId, storeId){
+  const s = state[zoneId];
+  const st = s.stores.find(x => x.id === storeId);
+  if (!st) return;
+  st.closed = !st.closed;
+  pushLogEvent(`🏬 Operaciones ${st.closed ? 'cerró' : 'abrió'} ${st.name} en <span>${s.name}</span>`);
+  pushOpsState();
+  render();
+}
+
+function opsAdjustEta(zoneId, dir){
+  const s = state[zoneId];
+  const next = (s.etaBoost || 0) + dir * ETA_BOOST_STEP;
+  s.etaBoost = Math.max(0, Math.min(ETA_BOOST_MAX, next));
+  pushLogEvent(`⏱️ Operaciones ajustó el ETA manual de <span>${s.name}</span> a +${s.etaBoost} min`);
+  pushOpsState();
+  render();
+}
+
+function opsToggleEdge(target, source){
+  const key = edgeKey(target, source);
+  const targetZone = state[target], sourceZone = state[source];
+  if (blockedEdges.has(key)){
+    blockedEdges.delete(key);
+    pushLogEvent(`✅ Operaciones permitió pedidos desde <span>${sourceZone.name}</span> hacia ${targetZone.name}`);
+  } else {
+    blockedEdges.add(key);
+    pushLogEvent(`🚫 Operaciones bloqueó pedidos desde <span>${sourceZone.name}</span> hacia ${targetZone.name}`);
+  }
+  pushOpsState();
+  render();
+}
+
+function pushOpsState(){
+  const payload = {
+    zones: {},
+    blockedEdges: Array.from(blockedEdges),
+  };
+  ZONES.forEach(z => {
+    const s = state[z.id];
+    payload.zones[z.id] = {
+      manualClosed: s.manualClosed,
+      etaBoost: s.etaBoost || 0,
+      stores: s.stores.map(st => ({ id: st.id, closed: st.closed })),
+    };
+  });
+  window.storage.set('ops:global', JSON.stringify(payload), true).catch(()=>{});
+}
+
+function applyOpsState(parsed){
+  if (!parsed || !parsed.zones) return;
+  ZONES.forEach(z => {
+    const zp = parsed.zones[z.id];
+    if (!zp) return;
+    const s = state[z.id];
+    s.manualClosed = !!zp.manualClosed;
+    s.etaBoost = zp.etaBoost || 0;
+    if (Array.isArray(zp.stores)){
+      zp.stores.forEach(stp => {
+        const st = s.stores.find(x => x.id === stp.id);
+        if (st) st.closed = !!stp.closed;
+      });
+    }
+  });
+  blockedEdges = new Set(Array.isArray(parsed.blockedEdges) ? parsed.blockedEdges : []);
+}
+
+async function pollOpsState(){
+  try{
+    const res = await window.storage.get('ops:global', true);
+    if (res && res.value){
+      applyOpsState(JSON.parse(res.value));
+      render();
+    }
+  } catch(e){
+    // no shared ops state yet — defaults apply
+  }
+}
+
+async function pollSharedLog(){
+  if (!isHost) return;
+  try{
+    const res = await window.storage.list('log:', true);
+    if (!res || !res.keys || !res.keys.length) return;
+    for (const key of res.keys){
+      if (!processedLogKeys.has(key)){
+        try{
+          const item = await window.storage.get(key, true);
+          if (item && item.value){
+            const parsed = JSON.parse(item.value);
+            log(parsed.msg, true);
+          }
+        } catch(e){}
+        processedLogKeys.add(key);
+      }
+      window.storage.delete(key, true).catch(()=>{});
+    }
+  } catch(e){
+    // no shared log entries yet
+  }
+}
+
+document.getElementById('promoAll').addEventListener('click', ()=>{
+  ZONES.forEach(z => sendPromo(z.id));
+  log(`📣 Promoción citywide activada en las 6 zonas`, true);
+});
+
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  ZONES.forEach(z => {
+    state[z.id].volume = z.baseVolume;
+    state[z.id].eta = BASE_ETA;
+    state[z.id].stress = z.baseVolume / z.capacity;
+    state[z.id].autoClosed = false;
+    state[z.id].manualClosed = false;
+    state[z.id].closedTicks = 0;
+    state[z.id].etaBoost = 0;
+    state[z.id].stores.forEach(st => st.closed = false);
+  });
+  blockedEdges = new Set();
+  totalOrders = 0;
+  logEl.innerHTML = '';
+  log('↺ Simulación reiniciada');
+  pushOpsState();
+  render();
+});
+
+document.getElementById('speedToggle').addEventListener('click', (e)=>{
+  speedMultiplier = speedMultiplier === 1 ? 3 : 1;
+  e.target.textContent = speedMultiplier === 1 ? 'Velocidad: normal' : 'Velocidad: rápida';
+});
+
+document.getElementById('organicToggle').addEventListener('click', (e)=>{
+  organicEnabled = !organicEnabled;
+  e.target.textContent = organicEnabled ? 'Demanda aleatoria: activa' : 'Demanda aleatoria: pausada';
+  log(organicEnabled ? '🎲 Pedidos orgánicos reanudados' : '🎲 Pedidos orgánicos pausados');
+});
+
+function tick(){
+  ZONES.forEach(z => {
+    const s = state[z.id];
+    const isClosed = isZoneClosed(s);
+    const capNow = effectiveCapacity(s);
+
+    // organic, unprompted orders — only land if the zone is open
+    if (organicEnabled && !isClosed && Math.random() < ORGANIC_CHANCE){
+      const size = Math.round(ORGANIC_MIN + Math.random() * (ORGANIC_MAX - ORGANIC_MIN));
+      s.volume += size;
+      totalOrders += size;
+    }
+
+    // decay volume back toward baseline (couriers catching up / orders completing)
+    s.volume += (z.baseVolume - s.volume) * DECAY_RATE * speedMultiplier;
+    if (s.volume < z.baseVolume) s.volume = z.baseVolume;
+    s.stress = capNow > 0 ? s.volume / capNow : 999;
+
+    if (!isClosed){
+      const overload = Math.max(0, s.stress - 1);
+      const boost = Math.min(ETA_BOOST_MAX, Math.max(0, s.etaBoost || 0));
+      s.eta = BASE_ETA + overload * SURGE_FACTOR + boost;
+    }
+
+    // auto-close an overloaded zone; auto-reopen once it cools down for long enough
+    if (!s.manualClosed){
+      if (!s.autoClosed && s.stress >= AUTO_CLOSE_STRESS){
+        s.autoClosed = true;
+        s.closedTicks = 0;
+        log(`⛔ <span>${s.name}</span> se cerró automáticamente — demanda muy por encima de la capacidad`, true);
+      } else if (s.autoClosed){
+        s.closedTicks++;
+        if (s.stress <= AUTO_REOPEN_STRESS && s.closedTicks >= MIN_CLOSED_TICKS){
+          s.autoClosed = false;
+          log(`✅ <span>${s.name}</span> se reabrió — la demanda volvió a niveles manejables`);
+        }
+      }
+    }
+  });
+  render();
+}
+
+setMode(false);
+log('Simulación lista. Envía una promoción a una zona para ver el efecto en el ETA.');
+tickHandle = setInterval(tick, 1000);
+setInterval(pollSharedOrders, 1500);
+setInterval(pollOpsState, 2000);
+setInterval(pollSharedLog, 1800);
+pollOpsState();
+</script>
+</body>
+</html>

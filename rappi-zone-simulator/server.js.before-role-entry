@@ -69,66 +69,6 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // Centralized role assignment. We do this on the server so simultaneous
-  // joins from many phones cannot accidentally create too many Operations
-  // participants.
-  if (req.method === 'POST' && url.pathname === '/api/participant/assign') {
-    try {
-      const { participantId } = await readJson(req);
-
-      if (typeof participantId !== 'string' || !participantId.trim()) {
-        return sendJson(res, 400, { error: 'participantId is required' });
-      }
-
-      const key = `participant-role:${participantId}`;
-
-      // Same phone/browser keeps the same role during the current server
-      // session.
-      if (store.has(key)) {
-        return sendJson(res, 200, JSON.parse(store.get(key)));
-      }
-
-      let clients = 0;
-      let operations = 0;
-
-      for (const [storedKey, value] of store.entries()) {
-        if (!storedKey.startsWith('participant-role:')) continue;
-        try {
-          const assignment = JSON.parse(value);
-          if (assignment.role === 'cliente') clients++;
-          if (assignment.role === 'operaciones') operations++;
-        } catch {}
-      }
-
-      // Operations is only possible if Clients would STILL strictly
-      // outnumber Operations after this person joins.
-      //
-      // The 30% probability makes the split naturally client-heavy.
-      const canAssignOperations = clients > operations + 1;
-      const role = canAssignOperations && Math.random() < 0.30
-        ? 'operaciones'
-        : 'cliente';
-
-      const assignment = {
-        participantId,
-        role,
-        assignedAt: Date.now(),
-      };
-
-      store.set(key, JSON.stringify(assignment));
-
-      return sendJson(res, 200, {
-        ...assignment,
-        counts: {
-          clients: clients + (role === 'cliente' ? 1 : 0),
-          operations: operations + (role === 'operaciones' ? 1 : 0),
-        },
-      });
-    } catch (error) {
-      return sendJson(res, 400, { error: error.message });
-    }
-  }
-
   if (req.method === 'GET' && url.pathname === '/api/storage') {
     const key = url.searchParams.get('key');
     const prefix = url.searchParams.get('prefix');

@@ -245,101 +245,6 @@
 
   .hidden{display:none !important;}
 
-  .entry-screen{
-    position:fixed;
-    inset:0;
-    z-index:90;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:24px;
-    background:var(--bg);
-  }
-  .entry-card{
-    width:min(720px,100%);
-    background:var(--panel);
-    border:1px solid var(--border);
-    border-radius:18px;
-    padding:34px;
-    box-shadow:0 24px 70px rgba(20,22,26,.10);
-  }
-  .entry-kicker{
-    font-family:var(--mono);
-    color:var(--accent);
-    font-size:11px;
-    font-weight:800;
-    letter-spacing:.12em;
-    text-transform:uppercase;
-  }
-  .entry-card h1{
-    margin:10px 0 8px;
-    font-size:clamp(30px,5vw,48px);
-    letter-spacing:-.045em;
-  }
-  .entry-card > p{
-    margin:0;
-    color:var(--text-dim);
-    line-height:1.55;
-  }
-  .entry-options{
-    display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:14px;
-    margin-top:28px;
-  }
-  .entry-option{
-    text-align:left;
-    padding:22px;
-    min-height:150px;
-    background:var(--panel2);
-    border:1px solid var(--border);
-    border-radius:13px;
-  }
-  .entry-option:hover{
-    border-color:#aba9a2;
-    background:var(--panel);
-  }
-  .entry-option .entry-icon{
-    font-size:28px;
-    display:block;
-    margin-bottom:18px;
-  }
-  .entry-option b{
-    display:block;
-    font-size:18px;
-    margin-bottom:5px;
-  }
-  .entry-option span{
-    display:block;
-    color:var(--text-dim);
-    font-size:12px;
-    line-height:1.5;
-    font-weight:500;
-  }
-  .entry-status{
-    min-height:18px;
-    margin-top:13px;
-    color:var(--text-dim);
-    font-size:12px;
-  }
-  .role-banner{
-    display:inline-flex;
-    align-items:center;
-    gap:7px;
-    margin-top:10px;
-    padding:6px 9px;
-    border-radius:999px;
-    background:var(--panel2);
-    color:var(--text-dim);
-    font-family:var(--mono);
-    font-size:10.5px;
-  }
-  @media(max-width:620px){
-    .entry-card{padding:24px 18px;}
-    .entry-options{grid-template-columns:1fr;}
-    .entry-option{min-height:125px;}
-  }
-
   .mode-bar{
     display:flex;
     align-items:center;
@@ -579,31 +484,7 @@
 </style>
 </head>
 <body>
-<div class="entry-screen" id="entryScreen">
-  <div class="entry-card">
-    <div class="entry-kicker">Live operations lab</div>
-    <h1>¿Cómo entras hoy?</h1>
-    <p>Los participantes reciben un rol automáticamente. La vista de organizadora está protegida con clave.</p>
-
-    <div class="entry-options">
-      <button class="entry-option" id="participantEntry">
-        <span class="entry-icon">🎮</span>
-        <b>Soy participante</b>
-        <span>Te asignaremos automáticamente como Cliente u Operaciones.</span>
-      </button>
-
-      <button class="entry-option" id="organizerEntry">
-        <span class="entry-icon">🧭</span>
-        <b>Soy organizadora</b>
-        <span>Acceso al tablero general. Requiere la clave de presentación.</span>
-      </button>
-    </div>
-
-    <div class="entry-status" id="entryStatus"></div>
-  </div>
-</div>
-
-<div class="wrap hidden" id="appWrap">
+<div class="wrap">
   <a class="home-link" href="/">← Volver a juegos</a>
 
   <header>
@@ -621,7 +502,7 @@
     </div>
   </header>
 
-  <div class="mode-bar hidden" id="modeBar">
+  <div class="mode-bar">
     <div class="hint" id="modeHint"><b>Vista de participante.</b> Elige un rol para entrar a la simulación. Si estás presentando, abre el tablero general.</div>
     <button id="modeToggle">Abrir tablero general</button>
   </div>
@@ -654,8 +535,8 @@
 
   <div id="studentView">
     <div class="student-intro">
-      <h1 id="studentTitle">Preparando tu rol…</h1>
-      <div class="sub" id="studentSub">La asignación es automática para mantener más clientes que personas en operaciones.</div>
+      <h1 id="studentTitle">Elige tu rol</h1>
+      <div class="sub" id="studentSub">Unos serán clientes, otros serán el equipo de operaciones.</div>
     </div>
     <div class="student-grid" id="studentGrid"></div>
   </div>
@@ -906,18 +787,6 @@ const passwordModalEl = document.getElementById('passwordModal');
 const passwordCardEl = document.getElementById('passwordCard');
 const passwordInputEl = document.getElementById('passwordInput');
 const passwordErrorEl = document.getElementById('passwordError');
-const entryScreenEl = document.getElementById('entryScreen');
-const entryStatusEl = document.getElementById('entryStatus');
-const appWrapEl = document.getElementById('appWrap');
-const participantEntryEl = document.getElementById('participantEntry');
-const organizerEntryEl = document.getElementById('organizerEntry');
-
-const participantId = localStorage.getItem('live-ops-participant-id') || (
-  (globalThis.crypto && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,10)
-);
-localStorage.setItem('live-ops-participant-id', participantId);
 
 function colorForStress(stress){
   if (stress < 0.75) return '#078A72';
@@ -980,21 +849,36 @@ function buildStudentCardHtml(z, opts){
 }
 
 function renderRolePicker(){
-  studentTitleEl.textContent = 'Preparando tu rol…';
-  studentSubEl.textContent = 'La asignación se hace automáticamente.';
+  studentTitleEl.textContent = 'Elige tu rol';
+  studentSubEl.textContent = 'Unos serán clientes, otros serán el equipo de operaciones.';
   studentGrid.innerHTML = `
-    <div class="sz-card" style="--zone-color:#078A72">
-      <div class="sz-name">Un momento…</div>
-      <div class="sz-tag">Estamos equilibrando Clientes y Operaciones.</div>
+    <div class="sz-card" style="--zone-color:${'#078A72'}">
+      <div class="sz-name">Cliente</div>
+      <div class="sz-tag">Pides comida desde tu zona</div>
+      <button class="pickBtn" data-pick-role="cliente">Soy Cliente</button>
+    </div>
+    <div class="sz-card" style="--zone-color:${'#FF4F1F'}">
+      <div class="sz-name">Operaciones</div>
+      <div class="sz-tag">Decides qué zonas y tiendas operan</div>
+      <button class="pickBtn" data-pick-role="operaciones">Soy Operaciones</button>
     </div>
   `;
+  document.querySelectorAll('[data-pick-role]').forEach(btn=>{
+    btn.addEventListener('click', () => {
+      myRole = btn.getAttribute('data-pick-role');
+      if (myRole === 'cliente' && !myZone){
+        myZone = ZONES[Math.floor(Math.random() * ZONES.length)].id;
+      }
+      render();
+    });
+  });
 }
 
 function renderClientPane(){
   const home = ZONES.find(zz => zz.id === myZone);
   const neighborIds = ADJACENCY[myZone] || [];
   studentTitleEl.textContent = `Tu zona: ${home.name}`;
-  studentSubEl.innerHTML = 'Puedes pedir en tu zona o en zonas vecinas — no puedes cambiar tu zona asignada.<br><span class="role-banner">🎮 Rol asignado: Cliente</span>';
+  studentSubEl.textContent = 'Puedes pedir en tu zona o en zonas vecinas — no puedes cambiar tu zona asignada.';
 
   let html = buildStudentCardHtml(home, { homeTag: true });
   neighborIds.forEach(nid => {
@@ -1014,7 +898,7 @@ function renderClientPane(){
 
 function renderOpsPane(){
   studentTitleEl.textContent = 'Panel de Operaciones';
-  studentSubEl.innerHTML = 'Decide qué zonas y tiendas operan, y desde dónde se puede pedir.<br><span class="role-banner">🧭 Rol asignado: Operaciones</span>';
+  studentSubEl.textContent = 'Decide qué zonas y tiendas operan, y desde dónde se puede pedir.';
 
   studentGrid.innerHTML = ZONES.map(z => {
     const s = state[z.id];
@@ -1216,58 +1100,19 @@ function setMode(host){
   isHost = host;
   hostViewEl.classList.toggle('hidden', !host);
   studentViewEl.classList.toggle('hidden', host);
+  modeToggleEl.textContent = host ? 'Volver a vista de participante' : 'Abrir tablero general';
   modeHintEl.innerHTML = host
-    ? '<b>Tablero general activo.</b> Vista exclusiva de la organizadora.'
-    : '<b>Vista de participante.</b> Tu rol fue asignado automáticamente.';
+    ? '<b>Tablero general activo.</b> Comparte este mismo enlace con los participantes; cada dispositivo puede elegir Cliente u Operaciones.'
+    : '<b>Vista de participante.</b> Elige un rol para entrar a la simulación. Si estás presentando, abre el tablero general.';
   render();
 }
 
-function showApp(){
-  entryScreenEl.classList.add('hidden');
-  appWrapEl.classList.remove('hidden');
-}
-
-function showEntry(){
-  appWrapEl.classList.add('hidden');
-  entryScreenEl.classList.remove('hidden');
-  entryStatusEl.textContent = '';
-}
-
-async function enterAsParticipant(){
-  participantEntryEl.disabled = true;
-  organizerEntryEl.disabled = true;
-  entryStatusEl.textContent = 'Asignando tu rol…';
-
-  try {
-    const response = await fetch('/api/participant/assign', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ participantId }),
-    });
-
-    if (!response.ok) throw new Error('No se pudo asignar el rol');
-
-    const assignment = await response.json();
-    myRole = assignment.role;
-
-    if (myRole === 'cliente' && !myZone){
-      myZone = ZONES[Math.floor(Math.random() * ZONES.length)].id;
-    }
-
-    showApp();
-    setMode(false);
-  } catch (error) {
-    entryStatusEl.textContent = 'No fue posible asignar tu rol. Intenta de nuevo.';
-  } finally {
-    participantEntryEl.disabled = false;
-    organizerEntryEl.disabled = false;
+document.getElementById('modeToggle').addEventListener('click', ()=>{
+  if (isHost){
+    setMode(false); // leaving host mode never needs a password
+  } else {
+    openPasswordModal();
   }
-}
-
-participantEntryEl.addEventListener('click', enterAsParticipant);
-organizerEntryEl.addEventListener('click', () => {
-  entryStatusEl.textContent = '';
-  openPasswordModal();
 });
 
 function openPasswordModal(){
@@ -1292,7 +1137,6 @@ async function submitPassword(){
     });
     if (response.ok) {
       closePasswordModal();
-      showApp();
       setMode(true);
       return;
     }
@@ -1578,8 +1422,8 @@ function tick(){
   render();
 }
 
-showEntry();
-log('Simulación lista. Los participantes reciben su rol automáticamente al entrar.');
+setMode(false);
+log('Simulación lista. Envía una promoción a una zona para ver el efecto en el ETA.');
 tickHandle = setInterval(tick, 1000);
 setInterval(pollSharedOrders, 1500);
 setInterval(pollOpsState, 2000);

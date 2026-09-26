@@ -245,57 +245,6 @@
 
   .hidden{display:none !important;}
 
-  .entry-screen{
-    position:fixed;inset:0;z-index:90;
-    display:flex;align-items:center;justify-content:center;
-    padding:24px;background:var(--bg);
-  }
-  .entry-card{
-    width:min(720px,100%);
-    background:var(--panel);border:1px solid var(--border);
-    border-radius:18px;padding:34px;
-    box-shadow:0 24px 70px rgba(20,22,26,.10);
-  }
-  .entry-kicker{
-    font-family:var(--mono);color:var(--accent);
-    font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
-  }
-  .entry-card h1{margin:10px 0 8px;font-size:clamp(30px,5vw,48px);letter-spacing:-.045em;}
-  .entry-card>p{margin:0;color:var(--text-dim);line-height:1.55;}
-  .entry-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:28px;}
-  .entry-option{
-    text-align:left;padding:22px;min-height:150px;
-    background:var(--panel2);border:1px solid var(--border);border-radius:13px;
-  }
-  .entry-option:hover{border-color:#aba9a2;background:var(--panel);}
-  .entry-option .entry-icon{font-size:28px;display:block;margin-bottom:18px;}
-  .entry-option b{display:block;font-size:18px;margin-bottom:5px;}
-  .entry-option span{display:block;color:var(--text-dim);font-size:12px;line-height:1.5;font-weight:500;}
-  .entry-status{min-height:18px;margin-top:13px;color:var(--text-dim);font-size:12px;}
-  .round-wait{
-    max-width:520px;margin:0 auto;background:var(--panel);
-    border:1px solid var(--border);border-radius:16px;padding:28px;text-align:center;
-  }
-  .round-wait .big{font-size:34px;margin-bottom:10px;}
-  .round-wait h2{margin:0 0 8px;}
-  .round-wait p{margin:0;color:var(--text-dim);line-height:1.55;font-size:13px;}
-  .round-badge{
-    display:inline-flex;align-items:center;gap:7px;margin-top:10px;
-    padding:6px 9px;border-radius:999px;background:var(--panel2);
-    color:var(--text-dim);font-family:var(--mono);font-size:10.5px;
-  }
-  .round-controls{
-    display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:18px;
-    padding:13px 15px;border:1px solid var(--border);border-radius:10px;background:var(--panel);
-  }
-  .round-controls .round-info{flex:1;min-width:220px;font-size:12px;color:var(--text-dim);}
-  .round-controls .round-info b{color:var(--text);}
-  @media(max-width:620px){
-    .entry-card{padding:24px 18px;}
-    .entry-options{grid-template-columns:1fr;}
-    .entry-option{min-height:125px;}
-  }
-
   .mode-bar{
     display:flex;
     align-items:center;
@@ -535,30 +484,7 @@
 </style>
 </head>
 <body>
-<div class="entry-screen" id="entryScreen">
-  <div class="entry-card">
-    <div class="entry-kicker">Live operations lab</div>
-    <h1>¿Cómo entras hoy?</h1>
-    <p>Los participantes esperan a que la organizadora inicie cada ronda. En cada ronda los roles se vuelven a repartir.</p>
-
-    <div class="entry-options">
-      <button class="entry-option" id="participantEntry">
-        <span class="entry-icon">🎮</span>
-        <b>Soy participante</b>
-        <span>Entras a la sala de espera y recibirás tu rol cuando comience la ronda.</span>
-      </button>
-      <button class="entry-option" id="organizerEntry">
-        <span class="entry-icon">🧭</span>
-        <b>Soy organizadora</b>
-        <span>Controlas las rondas y el tablero general. Requiere clave.</span>
-      </button>
-    </div>
-
-    <div class="entry-status" id="entryStatus"></div>
-  </div>
-</div>
-
-<div class="wrap hidden" id="appWrap">
+<div class="wrap">
   <a class="home-link" href="/">← Volver a juegos</a>
 
   <header>
@@ -576,18 +502,12 @@
     </div>
   </header>
 
-  <div class="mode-bar hidden" id="modeBar">
+  <div class="mode-bar">
     <div class="hint" id="modeHint"><b>Vista de participante.</b> Elige un rol para entrar a la simulación. Si estás presentando, abre el tablero general.</div>
     <button id="modeToggle">Abrir tablero general</button>
   </div>
 
   <div id="hostView" class="hidden">
-    <div class="round-controls">
-      <div class="round-info" id="roundInfo"><b>Sala abierta.</b> Esperando participantes…</div>
-      <button class="btn-primary" id="startRoundBtn">Iniciar ronda</button>
-      <button class="btn-ghost hidden" id="endRoundBtn">Terminar ronda</button>
-    </div>
-
     <div class="health-panel" id="healthPanel"></div>
 
     <div class="toolbar">
@@ -615,8 +535,8 @@
 
   <div id="studentView">
     <div class="student-intro">
-      <h1 id="studentTitle">Sala de espera</h1>
-      <div class="sub" id="studentSub">Tu rol aparecerá cuando la organizadora inicie la ronda.</div>
+      <h1 id="studentTitle">Elige tu rol</h1>
+      <div class="sub" id="studentSub">Unos serán clientes, otros serán el equipo de operaciones.</div>
     </div>
     <div class="student-grid" id="studentGrid"></div>
   </div>
@@ -867,26 +787,6 @@ const passwordModalEl = document.getElementById('passwordModal');
 const passwordCardEl = document.getElementById('passwordCard');
 const passwordInputEl = document.getElementById('passwordInput');
 const passwordErrorEl = document.getElementById('passwordError');
-const entryScreenEl = document.getElementById('entryScreen');
-const entryStatusEl = document.getElementById('entryStatus');
-const appWrapEl = document.getElementById('appWrap');
-const participantEntryEl = document.getElementById('participantEntry');
-const organizerEntryEl = document.getElementById('organizerEntry');
-const startRoundBtn = document.getElementById('startRoundBtn');
-const endRoundBtn = document.getElementById('endRoundBtn');
-const roundInfoEl = document.getElementById('roundInfo');
-
-const participantId = localStorage.getItem('live-ops-participant-id') || (
-  (globalThis.crypto && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,10)
-);
-localStorage.setItem('live-ops-participant-id', participantId);
-
-let currentRoundId = null;
-let participantMode = false;
-let presenterPassword = '';
-let lastRoundStateText = '';
 
 function colorForStress(stress){
   if (stress < 0.75) return '#078A72';
@@ -949,22 +849,36 @@ function buildStudentCardHtml(z, opts){
 }
 
 function renderRolePicker(){
-  studentTitleEl.textContent = 'Sala de espera';
-  studentSubEl.textContent = 'Tu rol aparecerá cuando la organizadora inicie la ronda.';
+  studentTitleEl.textContent = 'Elige tu rol';
+  studentSubEl.textContent = 'Unos serán clientes, otros serán el equipo de operaciones.';
   studentGrid.innerHTML = `
-    <div class="round-wait" style="grid-column:1/-1">
-      <div class="big">⏳</div>
-      <h2>Esperando la siguiente ronda</h2>
-      <p>Mantén esta pantalla abierta. Cuando la organizadora pulse <b>Iniciar ronda</b>, recibirás tu rol automáticamente.</p>
+    <div class="sz-card" style="--zone-color:${'#078A72'}">
+      <div class="sz-name">Cliente</div>
+      <div class="sz-tag">Pides comida desde tu zona</div>
+      <button class="pickBtn" data-pick-role="cliente">Soy Cliente</button>
+    </div>
+    <div class="sz-card" style="--zone-color:${'#FF4F1F'}">
+      <div class="sz-name">Operaciones</div>
+      <div class="sz-tag">Decides qué zonas y tiendas operan</div>
+      <button class="pickBtn" data-pick-role="operaciones">Soy Operaciones</button>
     </div>
   `;
+  document.querySelectorAll('[data-pick-role]').forEach(btn=>{
+    btn.addEventListener('click', () => {
+      myRole = btn.getAttribute('data-pick-role');
+      if (myRole === 'cliente' && !myZone){
+        myZone = ZONES[Math.floor(Math.random() * ZONES.length)].id;
+      }
+      render();
+    });
+  });
 }
 
 function renderClientPane(){
   const home = ZONES.find(zz => zz.id === myZone);
   const neighborIds = ADJACENCY[myZone] || [];
   studentTitleEl.textContent = `Tu zona: ${home.name}`;
-  studentSubEl.innerHTML = `Ronda ${currentRoundId || ''} · Puedes pedir en tu zona o en zonas vecinas.<br><span class="round-badge">🎮 Rol de esta ronda: Cliente</span>`;
+  studentSubEl.textContent = 'Puedes pedir en tu zona o en zonas vecinas — no puedes cambiar tu zona asignada.';
 
   let html = buildStudentCardHtml(home, { homeTag: true });
   neighborIds.forEach(nid => {
@@ -984,7 +898,7 @@ function renderClientPane(){
 
 function renderOpsPane(){
   studentTitleEl.textContent = 'Panel de Operaciones';
-  studentSubEl.innerHTML = `Ronda ${currentRoundId || ''} · Decide qué zonas y tiendas operan.<br><span class="round-badge">🧭 Rol de esta ronda: Operaciones</span>`;
+  studentSubEl.textContent = 'Decide qué zonas y tiendas operan, y desde dónde se puede pedir.';
 
   studentGrid.innerHTML = ZONES.map(z => {
     const s = state[z.id];
@@ -1186,214 +1100,20 @@ function setMode(host){
   isHost = host;
   hostViewEl.classList.toggle('hidden', !host);
   studentViewEl.classList.toggle('hidden', host);
+  modeToggleEl.textContent = host ? 'Volver a vista de participante' : 'Abrir tablero general';
+  modeHintEl.innerHTML = host
+    ? '<b>Tablero general activo.</b> Comparte este mismo enlace con los participantes; cada dispositivo puede elegir Cliente u Operaciones.'
+    : '<b>Vista de participante.</b> Elige un rol para entrar a la simulación. Si estás presentando, abre el tablero general.';
   render();
 }
 
-function showApp(){
-  entryScreenEl.classList.add('hidden');
-  appWrapEl.classList.remove('hidden');
-}
-
-function showEntry(){
-  appWrapEl.classList.add('hidden');
-  entryScreenEl.classList.remove('hidden');
-  entryStatusEl.textContent = '';
-}
-
-function shuffleArray(items){
-  const arr = items.slice();
-  for (let i = arr.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+document.getElementById('modeToggle').addEventListener('click', ()=>{
+  if (isHost){
+    setMode(false); // leaving host mode never needs a password
+  } else {
+    openPasswordModal();
   }
-  return arr;
-}
-
-async function participantHeartbeat(){
-  if (!participantMode) return;
-  try {
-    await window.storage.set(
-      `participant-active:${participantId}`,
-      JSON.stringify({ participantId, lastSeen: Date.now() })
-    );
-  } catch(e) {}
-}
-
-async function getActiveParticipants(){
-  const list = await window.storage.list('participant-active:');
-  const now = Date.now();
-  const active = [];
-
-  for (const key of (list.keys || [])){
-    try {
-      const item = await window.storage.get(key);
-      if (!item.value) continue;
-      const p = JSON.parse(item.value);
-      if (p.participantId && now - p.lastSeen <= 15000){
-        active.push(p.participantId);
-      }
-    } catch(e) {}
-  }
-  return [...new Set(active)];
-}
-
-async function getRoundState(){
-  try {
-    const r = await window.storage.get('live-ops:round');
-    return r.value ? JSON.parse(r.value) : null;
-  } catch(e) {
-    return null;
-  }
-}
-
-async function refreshOrganizerRoundInfo(){
-  if (!isHost) return;
-
-  try {
-    const active = await getActiveParticipants();
-    const round = await getRoundState();
-
-    if (round && round.active){
-      roundInfoEl.innerHTML =
-        `<b>Ronda ${round.roundId} activa.</b> ${round.players.length} estudiantes · ` +
-        `${round.clients} Clientes · ${round.operations} Operaciones`;
-      startRoundBtn.classList.add('hidden');
-      endRoundBtn.classList.remove('hidden');
-    } else {
-      roundInfoEl.innerHTML =
-        `<b>Sala abierta.</b> ${active.length} participante${active.length === 1 ? '' : 's'} listo${active.length === 1 ? '' : 's'}.`;
-      startRoundBtn.classList.remove('hidden');
-      endRoundBtn.classList.add('hidden');
-    }
-  } catch(e) {}
-}
-
-async function startRound(){
-  const active = await getActiveParticipants();
-
-  if (!active.length){
-    alert('Todavía no hay participantes en la sala de espera.');
-    return;
-  }
-
-  const previous = await getRoundState();
-  const roundId = previous && Number(previous.roundId)
-    ? Number(previous.roundId) + 1
-    : 1;
-
-  const players = shuffleArray(active);
-  const n = players.length;
-
-  // Desired split:
-  // 1 student  -> 1 client, organizer can cover Ops
-  // 2 students -> 1 client, 1 Ops
-  // 3 students -> 2 clients, 1 Ops
-  // 4 students -> 3 clients, 1 Ops
-  // 5 students -> 3 clients, 2 Ops
-  // then ~2/3 clients, ~1/3 Ops.
-  let operations = n === 1 ? 0 : Math.max(1, Math.round(n / 3));
-  let clients = n - operations;
-
-  // For n >= 3, clients must strictly outnumber Operations.
-  if (n >= 3 && clients <= operations){
-    operations = Math.max(1, Math.floor((n - 1) / 2));
-    clients = n - operations;
-  }
-
-  const opsSet = new Set(players.slice(0, operations));
-  const assignments = {};
-
-  players.forEach(id => {
-    assignments[id] = opsSet.has(id) ? 'operaciones' : 'cliente';
-  });
-
-  const round = {
-    active: true,
-    roundId,
-    startedAt: Date.now(),
-    players,
-    assignments,
-    clients,
-    operations,
-  };
-
-  await window.storage.set('live-ops:round', JSON.stringify(round));
-  await refreshOrganizerRoundInfo();
-}
-
-async function endRound(){
-  const round = await getRoundState();
-  if (!round || !round.active) return;
-
-  round.active = false;
-  round.endedAt = Date.now();
-  await window.storage.set('live-ops:round', JSON.stringify(round));
-  await refreshOrganizerRoundInfo();
-}
-
-async function pollRoundForParticipant(){
-  if (!participantMode) return;
-
-  await participantHeartbeat();
-  const round = await getRoundState();
-  const text = JSON.stringify(round || null);
-
-  if (text === lastRoundStateText) return;
-  lastRoundStateText = text;
-
-  if (!round || !round.active){
-    currentRoundId = round ? round.roundId : null;
-    myRole = null;
-    renderRolePicker();
-    return;
-  }
-
-  currentRoundId = round.roundId;
-  const assignedRole = round.assignments && round.assignments[participantId];
-
-  if (!assignedRole){
-    myRole = null;
-    studentTitleEl.textContent = 'La ronda ya comenzó';
-    studentSubEl.textContent = `Ronda ${round.roundId}`;
-    studentGrid.innerHTML = `
-      <div class="round-wait" style="grid-column:1/-1">
-        <div class="big">👀</div>
-        <h2>Entras en la siguiente ronda</h2>
-        <p>Llegaste después de que se repartieron los roles. Quédate aquí y entrarás automáticamente cuando comience la próxima.</p>
-      </div>
-    `;
-    return;
-  }
-
-  const roleChanged = myRole !== assignedRole;
-  myRole = assignedRole;
-
-  if (roleChanged && myRole === 'cliente'){
-    myZone = ZONES[Math.floor(Math.random() * ZONES.length)].id;
-  }
-
-  render();
-}
-
-async function enterAsParticipant(){
-  participantMode = true;
-  myRole = null;
-  entryStatusEl.textContent = 'Entrando a la sala…';
-  await participantHeartbeat();
-  showApp();
-  setMode(false);
-  await pollRoundForParticipant();
-}
-
-participantEntryEl.addEventListener('click', enterAsParticipant);
-organizerEntryEl.addEventListener('click', () => {
-  participantMode = false;
-  entryStatusEl.textContent = '';
-  openPasswordModal();
 });
-
-startRoundBtn.addEventListener('click', startRound);
-endRoundBtn.addEventListener('click', endRound);
 
 function openPasswordModal(){
   passwordErrorEl.textContent = '';
@@ -1408,7 +1128,6 @@ function closePasswordModal(){
 
 async function submitPassword(){
   const password = passwordInputEl.value;
-  presenterPassword = password;
   passwordErrorEl.textContent = 'Verificando…';
   try {
     const response = await fetch('/api/presenter/verify', {
@@ -1418,9 +1137,7 @@ async function submitPassword(){
     });
     if (response.ok) {
       closePasswordModal();
-      showApp();
       setMode(true);
-      await refreshOrganizerRoundInfo();
       return;
     }
     passwordErrorEl.textContent = 'Contraseña incorrecta';
@@ -1705,15 +1422,12 @@ function tick(){
   render();
 }
 
-showEntry();
-log('Simulación lista. Esperando que la organizadora inicie una ronda.');
+setMode(false);
+log('Simulación lista. Envía una promoción a una zona para ver el efecto en el ETA.');
 tickHandle = setInterval(tick, 1000);
 setInterval(pollSharedOrders, 1500);
 setInterval(pollOpsState, 2000);
 setInterval(pollSharedLog, 1800);
-setInterval(pollRoundForParticipant, 2000);
-setInterval(refreshOrganizerRoundInfo, 2000);
-setInterval(participantHeartbeat, 5000);
 pollOpsState();
 </script>
 </body>

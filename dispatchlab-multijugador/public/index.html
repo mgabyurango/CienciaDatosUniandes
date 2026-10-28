@@ -1,23 +1,272 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DispatchLab · MC-ES</title><style>
-:root{font-family:system-ui,-apple-system,sans-serif;color:#173048;background:#f4f7fa}*{box-sizing:border-box}body{margin:0}header{background:#15384c;color:white;padding:24px max(20px,calc((100vw - 960px)/2))}main{max-width:960px;margin:24px auto;padding:0 16px}.panel{background:white;border:1px solid #dce4e8;border-radius:16px;padding:22px;margin:16px 0;box-shadow:0 3px 12px #142b4210}h1{margin:0;font-size:27px}h2{margin-top:0}button,input{font:inherit;border-radius:9px;padding:11px 14px}input{border:1px solid #bbcbd3;max-width:220px}button{background:#146d72;color:white;border:0;cursor:pointer;margin:4px}button.secondary{background:#e5edf0;color:#173048}button:disabled{opacity:.4;cursor:not-allowed}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px}.metric{background:#eef6f7;padding:15px;border-radius:10px}.metric strong{display:block;font-size:23px}.muted{color:#5e7180}.hidden{display:none}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #e3eaed;padding:10px;text-align:left}.tag{background:#fce9b5;border-radius:6px;padding:4px 8px}#error{color:#9c2929}</style></head><body>
-<header><h1>DispatchLab</h1><p>Monte Carlo con inicios exploratorios · Ingeniería Industrial</p></header><main>
-<section id="login" class="panel"><h2>Entrar a una sala</h2><p class="muted">Aprende cuándo conviene despachar un vehículo o esperar para consolidar pedidos. No conoces las probabilidades del ambiente.</p><input id="room" placeholder="Sala (ej. MIAD2026)" value="MIAD2026"><input id="alias" placeholder="Tu alias"><button onclick="join()">Entrar</button></section>
-<section id="game" class="hidden"><div class="grid"><div class="metric">Estudiante<strong id="who">—</strong></div><div class="metric">Episodios<strong id="episodes">0</strong></div><div class="metric">Inicios distintos<strong id="coverage">0</strong></div></div>
-<div class="panel"><h2>Simulador de despacho</h2><p id="description"></p><div id="controls"></div><p id="hint" class="muted"></p><p id="qvalues"></p></div>
-<div class="panel"><h2>Entrenamiento MC-ES</h2><p class="muted">El primer par estado-acción se selecciona con inicio exploratorio. A partir de ahí, el agente sigue su política greedy y actualiza Q mediante retornos completos.</p><button onclick="train(10)">Entrenar 10 episodios</button><button onclick="train(100)">Entrenar 100 episodios</button></div>
-<div class="panel"><h2>Historial del último episodio</h2><div id="history"></div></div>
-<div class="panel"><h2>Ranking de la sala</h2><p class="muted">Utilidad promedio de episodios exploratorios. No representa todavía una evaluación imparcial de la política.</p><div id="leaders"></div><button class="secondary" onclick="refresh()">Actualizar ranking</button></div></section><p id="error" role="alert"></p></main>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b0d12">
+<title>DispatchLab — Monte Carlo Exploring Starts</title>
+<style>
+:root{--bg:#0b0d12;--panel:#12151d;--panel2:#171b26;--line:#252b3a;--white:#f0f3f7;--muted:#919bb0;--accent:#ff4713;--teal:#2dd4bf;--gold:#f5b544;--red:#fb5260;--mono:ui-monospace,SFMono-Regular,Consolas,monospace;--sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{background:radial-gradient(ellipse 65% 28% at 95% 0,rgba(255,71,19,.08),transparent),radial-gradient(ellipse 52% 30% at 0% 40%,rgba(45,212,191,.035),transparent),var(--bg);color:var(--white);font-family:var(--sans);margin:0;min-height:100vh}button,input,select{font:inherit}button{cursor:pointer;border-radius:9px;padding:12px 16px;border:1px solid var(--line);color:var(--white);font-size:13px;font-weight:700;background:var(--panel2);transition:background .15s,border-color .15s,transform .14s}button:hover:not(:disabled){border-color:#596177;transform:translateY(-1px)}button:active:not(:disabled){transform:translateY(0)}button:disabled{opacity:.39;cursor:not-allowed}button.primary{background:var(--accent);border-color:var(--accent);color:white}button.primary:hover:not(:disabled){background:#e9410f;border-color:#e9410f}button.teal{background:#073d3c;border-color:#176f6b;color:#9df9e9}button.ghost{background:transparent}button.wide{width:100%;text-align:left}input,select{background:#0e1119;border:1px solid #343949;border-radius:9px;color:var(--white);outline:none;padding:13px;width:100%;font-size:14px}input:focus,select:focus{border-color:var(--accent)}input::placeholder{color:#68738a}a{color:inherit;text-decoration:none}.hide{display:none!important}.wrap{width:min(1210px,100%);margin:0 auto;padding:0 26px}.top{position:sticky;top:0;z-index:12;border-bottom:1px solid var(--line);background:rgba(11,13,18,.94);backdrop-filter:blur(16px)}.nav{height:77px;display:flex;align-items:center;gap:19px}.brandmark{width:40px;height:40px;border-radius:11px;background:var(--accent);font-weight:900;font-size:23px;display:grid;place-items:center;box-shadow:0 8px 27px #ff47132b}.brandtitle{font-size:16px;font-weight:900;letter-spacing:-.045em;line-height:1.15}.brandtitle span{color:var(--accent)}.brandtitle small{display:block;color:var(--muted);font:700 9px var(--mono);letter-spacing:.13em;margin-top:6px}.navlinks{display:flex;gap:7px;margin-left:auto}.navlinks a{color:#acb2be;border-radius:8px;padding:10px 11px;font-size:12px;font-weight:700}.navlinks a:hover{background:var(--panel2);color:white}.roompill{border:1px solid #384052;border-radius:7px;padding:9px 12px;color:#bfc6d5;font:700 11px var(--mono);max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.online{display:inline-block;width:7px;height:7px;background:var(--teal);border-radius:50%;box-shadow:0 0 0 4px #2dd4bf1b;margin-right:9px}.mini{text-transform:uppercase;font:800 10px var(--mono);letter-spacing:.13em;color:var(--accent)}.muted{color:var(--muted)}.main{padding-top:39px;padding-bottom:75px}.hero{display:grid;grid-template-columns:1.4fr .7fr;gap:18px;align-items:end;margin-bottom:22px}.hero h1{font-size:clamp(35px,4.9vw,66px);letter-spacing:-.06em;line-height:1.02;margin:10px 0 12px;font-weight:850}.hero h1 em{font-style:normal;color:var(--accent)}.hero p{color:#a3adc0;font-size:14px;line-height:1.65;max-width:650px;margin:0}.hero-note{border:1px solid #4c332d;background:linear-gradient(120deg,#241b1b,#191c26);border-radius:14px;padding:20px 22px}.hero-note strong{font-size:23px;display:block;letter-spacing:-.04em;margin:8px 0}.hero-note p{font-size:12px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:19px}.metric{border:1px solid var(--line);border-radius:13px;background:var(--panel);padding:18px 20px;min-width:0}.metric .lbl{font:750 10px var(--mono);letter-spacing:.11em;color:#8d98ab;text-transform:uppercase}.metric .val{font:800 28px var(--mono);letter-spacing:-.065em;margin:11px 0 5px}.metric small{color:#8c96aa;font-size:10px}.metric.orange .val{color:var(--accent)}.metric.green .val{color:var(--teal)}.metric.gold .val{color:var(--gold)}.bar{height:6px;background:#262c3b;border-radius:6px;overflow:hidden;margin-top:13px}.bar>i{display:block;background:var(--teal);height:100%;border-radius:6px;transition:width .3s}.sectionhead{display:flex;justify-content:space-between;align-items:end;gap:18px;margin:35px 0 15px}.sectionhead h2{font-size:24px;letter-spacing:-.035em;margin:5px 0 0}.sectionhead p{color:var(--muted);font-size:12px;margin:0;line-height:1.5}.grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(315px,.87fr);gap:15px}.panel{border:1px solid var(--line);background:var(--panel);border-radius:14px;overflow:hidden}.pad{padding:22px}.panelhead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:17px;border-bottom:1px solid var(--line);margin-bottom:19px}.panelhead strong{font-size:13px}.panelhead small{font:700 10px var(--mono);color:var(--muted)}.eyebrow{font:700 10px var(--mono);letter-spacing:.1em;color:var(--muted);text-transform:uppercase}.stepper{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:16px 0 25px}.step{border-radius:6px;background:#202535;padding:7px 4px;text-align:center;color:#687386;font:750 10px var(--mono)}.step.active{background:var(--accent);color:white}.step.past{background:#164d4a;color:var(--teal)}.world{border:1px solid #293246;background:radial-gradient(circle at 50% 100%,#1b2833,#101721 65%);border-radius:14px;min-height:216px;position:relative;padding:18px;overflow:hidden}.world:before{content:"";position:absolute;inset:0;background-image:linear-gradient(#ffffff04 1px,transparent 1px),linear-gradient(90deg,#ffffff04 1px,transparent 1px);background-size:24px 24px;pointer-events:none}.worldtop{position:relative;display:flex;justify-content:space-between;gap:10px;align-items:center}.weather{font:750 10px var(--mono);padding:6px 9px;border-radius:7px;background:#103e3d;color:var(--teal)}.weather.hot{background:#4c2720;color:#ffa278}.roads{position:relative;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;min-height:148px}.hub,.delivery{position:relative;text-align:center;z-index:1}.building{height:58px;width:72px;border:2px solid #4c5b72;border-bottom:5px solid var(--teal);border-radius:8px 8px 3px 3px;background:repeating-linear-gradient(90deg,#25384c 0 12px,#172433 12px 17px);margin:10px auto}.hub strong,.delivery strong{display:block;font-size:12px}.hub small,.delivery small{font-size:11px;color:var(--muted)}.road{width:110px;height:3px;background:repeating-linear-gradient(90deg,#546075 0 16px,transparent 16px 27px);position:relative}.truck{position:absolute;top:-27px;left:28px;width:49px;height:30px;background:var(--accent);border-radius:5px 5px 3px 3px;display:grid;place-items:center;color:white;box-shadow:0 0 27px #ff47133b;font-size:23px}.truck.off{background:#454e62;box-shadow:none;opacity:.6}.truck.dispatch{animation:drive .9s ease-in-out}@keyframes drive{0%{left:10px}70%{left:65px}100%{left:28px}}.queue{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;margin:10px auto 2px;max-width:200px;min-height:24px}.order{width:19px;height:19px;border:1px solid #a75f3f;background:#513329;border-radius:4px;display:grid;place-items:center;color:#ffba86;font-size:10px}.order.empty{border-color:#39515b;background:#20363c;color:#72adae}.worldfoot{position:relative;display:flex;justify-content:space-between;gap:10px;color:var(--muted);font:650 10px var(--mono)}.summaryline{margin-top:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.tiny{padding:11px 13px;border:1px solid var(--line);border-radius:8px;background:#161b27}.tiny small{color:var(--muted);font-size:10px;display:block}.tiny b{display:block;font:750 18px var(--mono);margin-top:6px}.decisiontop{padding:23px 23px 0}.decisiontop h3{font-size:22px;letter-spacing:-.035em;margin:8px 0 7px}.decisiontop p{font-size:12px;color:var(--muted);line-height:1.6;margin:0}.actions{padding:20px 23px 23px;display:grid;gap:11px}.action{display:flex;text-align:left;gap:14px;align-items:flex-start;padding:17px;min-height:92px;border-radius:10px;background:#191e2a;border:1px solid #303647}.action:hover:not(:disabled){border-color:#6a7486}.action.highlight{background:linear-gradient(115deg,#42251b,#28202a);border-color:#a94c2d}.action .num{border:1px solid currentColor;border-radius:7px;padding:9px 11px;font:800 12px var(--mono);color:var(--accent)}.action.wait .num{color:var(--teal)}.action b{font-size:15px;display:block}.action span{font-weight:450;font-size:11px;line-height:1.45;color:var(--muted);display:block;margin-top:6px}.action .est{color:var(--teal);font:750 11px var(--mono);margin-top:9px}.force{color:#ffc4a8;background:#48261b;border:1px solid #80442d;padding:12px 13px;border-radius:9px;font-size:11px;line-height:1.6;margin-bottom:7px}.actionfoot{padding:15px 23px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);line-height:1.6}.buttonrow{display:flex;gap:8px;flex-wrap:wrap}.feedback{margin-top:15px;border:1px solid #385153;border-radius:12px;background:#142426;padding:16px 19px;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:18px}.feedback .big{font:800 28px var(--mono);color:var(--teal)}.feedback.negative{background:#301c20;border-color:#70404b}.feedback.negative .big{color:#ff8c98}.feedback strong{font-size:12px}.feedback p{margin:6px 0 0;font-size:11px;line-height:1.55;color:#aab8bd}.receipt{margin-top:13px;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.receipt div{font-size:10px;color:#a4afc1;border:1px solid var(--line);background:#11151e;border-radius:8px;padding:11px 12px}.receipt b{font:750 13px var(--mono);display:block;margin-top:5px;color:var(--white)}.receipt b.pos{color:var(--teal)}.receipt b.neg{color:#ff8993}.training{display:grid;grid-template-columns:1fr 1fr;gap:16px}.training .panel{padding:24px}.training h3{font-size:20px;letter-spacing:-.025em;margin:8px 0}.training p{font-size:12px;line-height:1.65;color:var(--muted)}.training .buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}.training .buttons button{flex:1;white-space:nowrap}.train-hint{font-size:11px;line-height:1.5;border:1px dashed #384255;border-radius:8px;padding:11px;margin-top:16px;color:#adb7ca}.train-hint strong{color:var(--teal)}.policytools{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.policytools label{color:var(--muted);font-size:11px}.policytools select{display:block;margin-top:7px;padding:9px 11px;font-size:12px;min-width:148px}.policytable{width:100%;border-collapse:collapse;font-size:11px;margin-top:15px}.policytable th{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font:700 10px var(--mono);text-align:left;padding:12px}.policytable td{border-top:1px solid var(--line);padding:10px 12px}.pick{font:800 10px var(--mono);letter-spacing:.06em;display:inline-flex;border-radius:6px;padding:7px 10px;background:#164440;color:var(--teal)}.pick.send{background:#542b22;color:#ff9b72}.pick.unknown{background:#242a37;color:#b0b6c3}.tablewrap{overflow:auto}.policykey{margin-top:16px;font-size:11px;color:var(--muted);line-height:1.65}.ranklayout{display:grid;grid-template-columns:minmax(0,1.33fr) minmax(300px,.85fr);gap:16px}.rule{display:grid;grid-template-columns:31px 1fr;gap:12px;margin:17px 0;align-items:start}.rule .rn{height:27px;width:27px;background:#322520;color:var(--accent);border-radius:7px;display:grid;place-items:center;font:800 11px var(--mono)}.rule b{font-size:12px}.rule p{font-size:11px;color:var(--muted);line-height:1.6;margin:5px 0 0}.scorebox{border:1px solid #65452f;background:linear-gradient(130deg,#271f1b,#191b25);border-radius:11px;padding:19px;margin-top:19px}.scorebox .amount{font:850 37px var(--mono);color:var(--gold);letter-spacing:-.055em;margin:9px 0}.scorebox p{font-size:11px;color:#b6a9a1;line-height:1.5}.scorebox .evalbtn{width:100%;text-align:center;margin-top:14px}.caution{display:block;color:#ffba90;font-size:10px;margin-top:11px;line-height:1.5}.leaderhead{display:grid;grid-template-columns:40px 1fr 95px;gap:8px;padding:8px 13px;color:var(--muted);font:750 10px var(--mono);letter-spacing:.06em;border-bottom:1px solid var(--line)}.leaderline{display:grid;grid-template-columns:40px 1fr 95px;gap:8px;align-items:center;padding:15px 13px;border-bottom:1px solid var(--line)}.ranknum{font:800 16px var(--mono);color:var(--gold)}.rankname{font-weight:700;font-size:12px;overflow-wrap:anywhere}.rankname small{font:500 10px var(--mono);color:var(--muted);display:block;margin-top:5px}.rankvalue{text-align:right;color:var(--teal);font:800 15px var(--mono)}.rankempty{color:var(--muted);font-size:12px;line-height:1.65;padding:22px 13px}.ledger{width:100%;border-collapse:collapse;font-size:11px}.ledger th,.ledger td{text-align:left;border-bottom:1px solid var(--line);padding:12px 13px}.ledger th{color:var(--muted);font:700 10px var(--mono);text-transform:uppercase}.ledger td:last-child{text-align:right;font:750 12px var(--mono)}.danger{color:var(--red)!important}.profit{color:var(--teal)!important}.note{border:1px solid #42414e;background:#1c1e29;border-radius:10px;padding:15px;color:#b6bece;font-size:11px;line-height:1.65;margin-top:17px}.footer{margin:42px 0 5px;color:#646f84;border-top:1px solid var(--line);padding-top:20px;display:flex;justify-content:space-between;font:600 10px var(--mono)}.toast{position:fixed;bottom:25px;right:25px;z-index:50;background:#242c38;border:1px solid #455369;color:#fff;padding:13px 18px;border-radius:10px;box-shadow:0 13px 40px #0008;font-size:12px;max-width:340px}.busy button{pointer-events:none;opacity:.64}.entry{min-height:calc(100vh - 78px);display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;padding:55px 0 100px}.entry h1{font-size:clamp(43px,6vw,80px);letter-spacing:-.075em;line-height:.96;margin:13px 0 24px}.entry h1 span{color:var(--accent)}.entry p{color:var(--muted);font-size:14px;line-height:1.8;max-width:490px}.entrypoints{display:flex;gap:10px;flex-wrap:wrap;margin-top:29px}.entrypoints span{background:#202530;border:1px solid #2d3341;border-radius:8px;padding:10px 12px;color:#bcc5d5;font:700 10px var(--mono)}.loginbox{background:var(--panel);border:1px solid #34394a;border-radius:17px;padding:29px;box-shadow:0 30px 85px #0004}.loginbox h2{font-size:23px;letter-spacing:-.04em;margin:8px 0 7px}.loginbox p{color:var(--muted);font-size:12px;line-height:1.6;margin-bottom:25px}.loginbox label{display:block;font-size:11px;font-weight:700;margin:15px 0 8px}.loginbox button{margin-top:22px;width:100%;padding:14px}.tip{font:650 10px var(--mono);color:#79859b;margin-top:16px;line-height:1.5}.footnote{font-size:10px;color:var(--muted);line-height:1.5;margin-top:12px}.scorecaption{color:var(--muted);font-size:11px;line-height:1.7;margin-top:9px}.stale{color:var(--gold)}.radios{display:flex;gap:7px;flex-wrap:wrap}.radios button{font-size:11px;padding:8px 12px}.radios button.sel{border-color:var(--accent);color:var(--accent);background:#34221d}
+@media(max-width:950px){.hero,.grid,.ranklayout,.entry{grid-template-columns:1fr}.entry{padding-top:45px;gap:23px}.hero-note{max-width:550px}.navlinks{display:none}.roompill{margin-left:auto}.metrics{grid-template-columns:repeat(2,1fr)}.road{width:140px}}
+@media(max-width:600px){.wrap{padding:0 15px}.nav{height:65px;gap:10px}.brandmark{width:35px;height:35px}.brandtitle{font-size:14px}.roompill{font-size:9px;padding:8px;max-width:105px}.main{padding-top:25px}.hero h1{font-size:41px}.metrics{gap:8px}.metric{padding:13px}.metric .val{font-size:24px}.metric .lbl{font-size:9px}.training{grid-template-columns:1fr}.summaryline{gap:4px}.tiny{padding:10px 8px}.tiny b{font-size:14px}.road{width:70px}.roads{gap:5px}.world{padding:13px}.receipt{grid-template-columns:repeat(2,1fr)}.sectionhead{align-items:start}.sectionhead p{max-width:170px;font-size:10px}.entry h1{font-size:47px}.loginbox{padding:23px}.feedback{grid-template-columns:1fr;gap:4px}.footer{gap:14px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap nav">
+  <div class="brandmark">D</div><div class="brandtitle">DISPATCH<span>LAB</span><small>MONTE CARLO · EXPLORING STARTS</small></div>
+  <nav class="navlinks hide" id="navlinks"><a href="#operation">Operación</a><a href="#learning">Entrenamiento</a><a href="#policySection">Política</a><a href="#competition">Competencia</a></nav>
+  <span id="roompill" class="roompill hide"><i class="online"></i><span id="navroom">Sala</span></span>
+  <button id="leave" class="ghost hide" onclick="leave()" style="padding:10px;font-size:11px">Cambiar usuario</button>
+</div></header>
+<div id="entry" class="wrap entry">
+  <div><div class="mini">Laboratorio interactivo / 01</div><h1>Decide hoy.<br><span>Aprende</span><br>para mañana.</h1>
+    <p>Una flota. Pedidos que se acumulan. Congestión impredecible. Decide cuándo despachar, aprende de tus episodios y compite con tu política de Monte Carlo.</p>
+    <div class="entrypoints"><span>01 · SIMULA</span><span>02 · EXPLORA</span><span>03 · APRENDE</span><span>04 · COMPITE</span></div>
+  </div>
+  <div class="loginbox"><div class="mini">Acceso a la operación</div><h2>Entra a tu sala.</h2><p>Cada participante aprende su propia política, pero compite con los mismos escenarios finales.</p>
+    <label for="alias">Tu nombre o alias</label><input id="alias" maxlength="32" placeholder="Ej. Valentina" autocomplete="nickname">
+    <label for="room">Código de la sala</label><input id="room" maxlength="20" value="MIAD2026" placeholder="Ej. MIAD2026" autocapitalize="characters">
+    <button class="primary" onclick="join()">Empezar a jugar →</button>
+    <div class="tip">No necesitas instalar nada. Tu progreso se guarda en esta sesión del navegador.</div>
+  </div>
+</div>
+<main id="game" class="wrap main hide">
+  <section class="hero"><div><div class="mini">Live operations / Decision laboratory</div><h1>La operación <em>no espera.</em></h1><p>Tu misión: maximizar la utilidad neta de las entregas. Los pedidos llegan, los vehículos se ocupan y las condiciones cambian. No conoces las probabilidades: aprende de lo que observas.</p></div>
+    <div class="hero-note"><div class="mini">El objetivo competitivo</div><strong>Mayor utilidad = ganar.</strong><p>No gana quien más entrena ni quien tiene mejor suerte. Todos se evalúan con la misma prueba de 80 escenarios.</p></div></section>
+  <div class="metrics">
+    <div class="metric orange"><div class="lbl">Episodios completados</div><div class="val" id="mEpisodes">0</div><small>Entrenamiento acumulado</small><div class="bar"><i id="trainbar" style="width:0%;background:var(--accent)"></i></div></div>
+    <div class="metric green"><div class="lbl">Inicios explorados</div><div class="val" id="mStarts">0/160</div><small>Pares estado–acción distintos</small><div class="bar"><i id="startbar" style="width:0%"></i></div></div>
+    <div class="metric"><div class="lbl">Q estimadas</div><div class="val" id="mQ">0</div><small>Pares con retornos observados</small><div class="bar"><i id="qbar" style="width:0%"></i></div></div>
+    <div class="metric gold"><div class="lbl">Resultado competitivo</div><div class="val" id="mScore">—</div><small id="mScoreCaption">Todavía no evaluado</small></div>
+  </div>
+
+  <section id="operation"><div class="sectionhead"><div><div class="mini">01 / Simulación</div><h2>Centro de operaciones</h2></div><p>Cada turno equivale a una hora.<br>Decide y observa las consecuencias.</p></div>
+    <div class="grid">
+      <div>
+        <div class="panel pad">
+          <div class="panelhead"><strong>Estado de la operación</strong><small id="episodeStatus">EN ESPERA</small></div>
+          <div class="eyebrow" id="stateLine">Inicia un episodio para comenzar</div>
+          <div class="stepper" id="stepper"><div class="step">01</div><div class="step">02</div><div class="step">03</div><div class="step">04</div></div>
+          <div class="world">
+            <div class="worldtop"><span class="eyebrow">SIMULACIÓN / CIUDAD</span><span id="weather" class="weather">Congestión —</span></div>
+            <div class="roads">
+              <div class="hub"><div class="building"></div><strong>Centro logístico</strong><small id="pendingLabel">Pedidos por atender</small><div id="queue" class="queue"></div></div>
+              <div class="road"><div id="truck" class="truck">➜</div></div>
+              <div class="delivery"><div class="building" style="border-bottom-color:var(--gold)"></div><strong>Destino</strong><small id="vehicleLabel">Vehículo disponible</small></div>
+            </div>
+            <div class="worldfoot"><span>ALMACÉN → ENTREGA</span><span>CAPACIDAD · 4 PEDIDOS</span></div>
+          </div>
+          <div class="summaryline">
+            <div class="tiny"><small>Pedidos pendientes</small><b id="stateOrders">—</b></div>
+            <div class="tiny"><small>Vehículo</small><b id="stateVehicle">—</b></div>
+            <div class="tiny"><small>Utilidad episodio</small><b id="stateProfit">0</b></div>
+          </div>
+        </div>
+        <div class="feedback hide" id="feedback"><div class="big" id="feedbackValue">+0</div><div><strong id="feedbackTitle">Resultado de la decisión</strong><p id="feedbackText"></p></div></div>
+        <div id="receipt" class="receipt hide"></div>
+      </div>
+      <div class="panel">
+        <div class="decisiontop"><div class="mini">Centro de decisiones</div><h3 id="decisionTitle">¿Despachas o esperas?</h3><p id="decisionSub">Elige una acción. Cada una puede generar ingresos, costos operativos y pedidos sin atender.</p></div>
+        <div id="actions" class="actions"><button class="primary" onclick="start()">Comenzar episodio →</button></div>
+        <div id="actionfooter" class="actionfoot">Los comienzos son exploratorios: el simulador asigna la primera acción para garantizar exploración.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="learning"><div class="sectionhead"><div><div class="mini">02 / Aprendizaje</div><h2>Entrena a tu agente</h2></div><p>Aprendizaje por episodios completos<br>sin conocer el modelo de transición.</p></div>
+    <div class="training">
+      <div class="panel"><div class="mini">Modo manual</div><h3>Aprende jugando</h3><p>En cada episodio comienzas en un estado aleatorio, con una primera acción asignada. Luego eliges qué hacer y ves las recompensas. Al terminar se actualizan las estimaciones de Q.</p><div class="buttons"><button class="primary" onclick="start()">Nuevo episodio manual →</button></div><div class="train-hint">Ideal para comprender las consecuencias de <strong>esperar</strong> o <strong>despachar</strong> y observar los retornos.</div></div>
+      <div class="panel"><div class="mini">Modo Monte Carlo</div><h3>Practica con MC-ES</h3><p>El agente prueba distintos pares iniciales; después sigue la política greedy estimada. Al terminar actualiza Q con el promedio incremental de retornos first-visit.</p><div class="buttons"><button onclick="train(1)">+1</button><button onclick="train(10)">+10</button><button onclick="train(50)">+50</button><button class="teal" onclick="train(100)">+100 episodios</button></div><div class="train-hint">Importante: más episodios <strong>no dan más puntos</strong>. Mejoran tu oportunidad de aprender una política útil.</div></div>
+    </div>
+  </section>
+
+  <section id="policySection"><div class="sectionhead"><div><div class="mini">03 / Inspección de política</div><h2>¿Qué está aprendiendo tu agente?</h2></div><p>Consulta Q(s,a) y compara decisiones<br>para distintos estados.</p></div>
+    <div class="panel pad">
+      <div class="panelhead"><strong>Mapa de la política greedy</strong><small>APRENDIZAJE EN CURSO</small></div>
+      <div class="policytools"><label>Hora del horizonte<select id="hourFilter" onchange="drawPolicy()"><option value="0">Hora 1</option><option value="1">Hora 2</option><option value="2">Hora 3</option><option value="3">Hora 4</option></select></label>
+        <label>Congestión<select id="congestionFilter" onchange="drawPolicy()"><option value="0">Baja</option><option value="1">Alta</option></select></label></div>
+      <div class="tablewrap"><table class="policytable"><thead><tr><th>Pedidos</th><th>Decisión sugerida</th><th>Q(esperar)</th><th>Q(despachar)</th><th>Visitas E / D</th></tr></thead><tbody id="policyBody"></tbody></table></div>
+      <div class="policykey">La política elige la acción con la mayor Q estimada. Cuando faltan observaciones, los valores pueden ser poco confiables; un empate se resuelve a favor de esperar. Las decisiones manuales posteriores al primer inicio exploratorio no necesariamente siguen la política greedy; el entrenamiento automático sí.</div>
+    </div>
+  </section>
+
+  <section id="competition"><div class="sectionhead"><div><div class="mini">04 / Desafío de clase</div><h2>¿Quién tiene la mejor política?</h2></div><p>Clasificación basada en evaluación,<br>no en suerte durante el entrenamiento.</p></div>
+    <div class="ranklayout">
+      <div class="panel pad">
+        <div class="panelhead"><strong>Ranking · <span id="rankRoom">SALA</span></strong><button onclick="refresh()" style="padding:8px 10px;font-size:10px">Actualizar ↻</button></div>
+        <div class="leaderhead"><span>#</span><span>Participante</span><span style="text-align:right">Utilidad / escenario</span></div>
+        <div id="leaders"><div class="rankempty">Aún no se ha evaluado ninguna política. ¡Sé la primera persona en competir!</div></div>
+        <div class="note">Las políticas se ordenan por utilidad neta promedio. Si empatan, gana quien tenga menos pedidos rechazados o sin entregar en los mismos escenarios. Los resultados desactualizados aparecen marcados.</div>
+      </div>
+      <div class="panel pad">
+        <div class="panelhead"><strong>Reglas de la competencia</strong><small>TRANSPARENTE</small></div>
+        <div class="rule"><div class="rn">01</div><div><b>Entrena por lo menos 20 episodios</b><p>MC-ES estima Q(s,a) a partir de la experiencia. Puedes seguir entrenando cuanto quieras.</p></div></div>
+        <div class="rule"><div class="rn">02</div><div><b>Evalúa tu política congelada</b><p>Todos enfrentan 80 escenarios idénticos, con las mismas condiciones iniciales y realizaciones aleatorias. Durante la prueba no se actualiza Q.</p></div></div>
+        <div class="rule"><div class="rn">03</div><div><b>Gana la mayor utilidad promedio</b><p>Ingresos por pedidos entregados menos despacho, congestión, espera, rechazos y pedidos sin terminar. Desempate: menos pedidos perdidos.</p></div></div>
+        <div class="scorebox"><div class="mini" style="color:var(--gold)">Tu puntuación oficial</div><div class="amount" id="officialScore">—</div><p id="officialText">Completa 20 episodios para desbloquear la evaluación.</p><button class="primary evalbtn" id="evalButton" onclick="evaluatePolicy()">Evaluar mi política →</button><div id="staleText" class="caution hide">Has entrenado después de evaluar. Repite la evaluación para actualizar tu puntuación.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="historySection"><div class="sectionhead"><div><div class="mini">05 / Bitácora</div><h2>Lo que pasó en tu último episodio</h2></div><p>El resultado de una decisión no depende<br>solo de la acción, sino del estado y el azar.</p></div>
+    <div class="panel pad"><div class="tablewrap"><table class="ledger"><thead><tr><th>Turno</th><th>Pedidos</th><th>Vehículo</th><th>Congestión</th><th>Acción</th><th>Entregados</th><th>Rechazados</th><th>Utilidad</th></tr></thead><tbody id="historyRows"><tr><td colspan="8" class="muted">Empieza a jugar para ver tu bitácora.</td></tr></tbody></table></div></div>
+  </section>
+  <footer class="footer"><span>DISPATCHLAB / UNIVERSIDAD DE LOS ANDES</span><span>REINFORCEMENT LEARNING · MONTE CARLO</span></footer>
+</main>
+<div id="toast" role="status" class="toast hide"></div>
 <script>
-let auth=null;try{auth=JSON.parse(sessionStorage.getItem('dispatchlab_session'))}catch{}
-const by=id=>document.getElementById(id);
-async function call(path,data={}){by('error').textContent='';try{let r=await fetch('/api/'+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...auth,...data})});let out=await r.json();if(!r.ok)throw Error(out.error||'Error');render(out);return out}catch(e){by('error').textContent=e.message}}
-async function join(){let out=await call('join',{alias:by('alias').value,room:by('room').value});if(out?.token){auth={userId:out.userId,token:out.token,room:out.room};sessionStorage.setItem('dispatchlab_session',JSON.stringify(auth))}}
-async function refresh(){await call('state')}async function start(){await call('start')}async function act(action){await call('act',{action})}async function train(count){await call('train',{count})}
-function render(x){by('login').classList.add('hidden');by('game').classList.remove('hidden');by('who').textContent=x.alias+' · '+x.room;by('episodes').textContent=x.episodes;by('coverage').textContent=x.coverage+' / '+x.total;
-let ss=x.session,ctl=by('controls');ctl.replaceChildren();by('hint').textContent='';by('qvalues').textContent='';
-if(!ss||ss.done){by('description').textContent=ss?'Episodio terminado. Revisa el historial y continúa.':'Comienza una partida con un inicio exploratorio.';let b=document.createElement('button');b.textContent='Nueva partida';b.onclick=start;ctl.append(b)}
-else{let [t,p,v,c]=ss.state;by('description').textContent='Hora '+(t+1)+' de 4 · '+p+' pedidos pendientes · Vehículo '+(v?'disponible':'ocupado')+' · Congestión '+(c?'alta':'baja');let actions=p&&v?['ESPERAR','DESPACHAR']:['ESPERAR'];if(ss.first)by('hint').textContent='INICIO EXPLORATORIO: primera acción obligatoria = '+ss.forced;for(let a of actions){let b=document.createElement('button');b.textContent=a;b.disabled=ss.first&&a!==ss.forced;b.onclick=()=>act(a);ctl.append(b)}by('qvalues').textContent=Object.entries(x.q).map(([a,v])=>'Q('+a+') = '+(v.n?v.value.toFixed(2):'sin estimar')+' (n='+v.n+')').join(' · ')}
-let history=ss?.trail||[];by('history').innerHTML='<table><tr><th>Hora</th><th>Pedidos</th><th>Acción</th><th>Recompensa</th></tr>'+history.map(z=>'<tr><td>'+(z.state[0]+1)+'</td><td>'+z.state[1]+'</td><td>'+z.action+'</td><td>'+z.reward.toFixed(1)+'</td></tr>').join('')+'</table>';
-by('leaders').innerHTML='<table><tr><th>Alias</th><th>Episodios</th><th>Utilidad promedio</th></tr>'+x.leaders.map(z=>'<tr><td>'+escapeHTML(z.alias)+'</td><td>'+z.episodes+'</td><td>'+z.average.toFixed(1)+'</td></tr>').join('')+'</table>'}
-function escapeHTML(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-if(auth)refresh();</script></body></html>
+'use strict';
+const $=id=>document.getElementById(id);
+const escapeHTML=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const number=n=>Number(n).toLocaleString('es-CO',{maximumFractionDigits:1});
+const money=n=>(n>=0?'+':'−')+'$'+number(Math.abs(n));
+let auth=null,model=null,busy=false,toastTimer=null;
+try{auth=JSON.parse(sessionStorage.getItem('dispatchlab_session'))}catch{}
+function toast(message){
+  const el=$('toast');el.textContent=message;el.classList.remove('hide');
+  if(toastTimer)clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.add('hide'),3800);
+}
+function setBusy(next){busy=next;document.body.classList.toggle('busy',next)}
+async function request(route,data={}){
+  if(busy)return null;
+  setBusy(true);
+  try{
+    const response=await fetch('/api/'+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({},auth||{},data))});
+    const result=await response.json();
+    if(!response.ok)throw Error(result.error||'Error al procesar la solicitud');
+    model=result;render(result);
+    return result;
+  }catch(error){
+    if(String(error.message).includes('Sesión inválida')){auth=null;sessionStorage.removeItem('dispatchlab_session');showEntry()}
+    toast(error.message);return null;
+  }finally{setBusy(false)}
+}
+async function join(){
+  const alias=$('alias').value.trim(),room=$('room').value.trim();
+  if(alias.length<2){toast('Escribe un alias de al menos 2 caracteres.');return}
+  const result=await request('join',{alias,room});
+  if(result&&result.token){auth={userId:result.userId,token:result.token,room:result.room};sessionStorage.setItem('dispatchlab_session',JSON.stringify(auth))}
+}
+function showEntry(){
+  $('entry').classList.remove('hide');$('game').classList.add('hide');
+  $('navlinks').classList.add('hide');$('roompill').classList.add('hide');$('leave').classList.add('hide');
+}
+function leave(){auth=null;sessionStorage.removeItem('dispatchlab_session');model=null;showEntry()}
+async function refresh(){await request('state')}
+async function start(){if(model?.session&&!model.session.done){toast('Termina primero tu episodio actual.');return}await request('start')}
+async function act(action){
+  const result=await request('act',{action});
+  if(result){
+    const trail=result.session?.trail||[],last=trail[trail.length-1];
+    if(last)toast((action==='DESPACHAR'?'Vehículo despachado. ':'Decidiste esperar. ')+money(last.reward)+' en este turno.');
+  }
+}
+async function train(count){
+  if(model?.session&&!model.session.done){toast('Termina el episodio manual antes de entrenar.');return}
+  const result=await request('train',{count});if(result)toast('Aprendizaje completado: '+count+' episodios nuevos.');
+}
+async function evaluatePolicy(){
+  const result=await request('evaluate');
+  if(result)toast('Evaluación completada. Tu política está en el ranking de la sala.');
+}
+function render(data){
+  $('entry').classList.add('hide');$('game').classList.remove('hide');
+  $('navlinks').classList.remove('hide');$('roompill').classList.remove('hide');$('leave').classList.remove('hide');
+  $('navroom').textContent=data.room+' · '+data.alias;$('rankRoom').textContent=data.room;
+  $('mEpisodes').textContent=number(data.episodes);
+  $('mStarts').textContent=data.coverage+'/'+data.total;
+  $('mQ').textContent=data.learned;
+  $('trainbar').style.width=Math.min(100,100*data.episodes/data.minimum)+'%';
+  $('startbar').style.width=100*data.coverage/data.total+'%';
+  $('qbar').style.width=100*data.learned/data.total+'%';
+  const ev=data.evaluation,stale=ev&&ev.episodes!==data.episodes;
+  $('mScore').textContent=ev?'$'+number(ev.average):'—';
+  $('mScoreCaption').textContent=ev?(stale?'Reevaluación pendiente':'80 escenarios · vigente'):'Todavía no evaluado';
+  $('officialScore').textContent=ev?'$'+number(ev.average):'—';
+  $('officialText').textContent=ev?'Utilidad neta promedio · '+ev.missed+' pedidos perdidos en total · '+ev.delivered+' entregados':data.episodes<data.minimum?'Completa '+(data.minimum-data.episodes)+' episodios más para desbloquear la evaluación.':'Ya puedes evaluar tu política en 80 escenarios comunes.';
+  $('evalButton').disabled=data.episodes<data.minimum;
+  $('evalButton').textContent=ev?'Volver a evaluar mi política ↻':'Evaluar mi política →';
+  $('staleText').classList.toggle('hide',!stale);
+  drawState(data);
+  drawPolicy();
+  drawRanking(data.leaders);
+  drawHistory(data.session);
+}
+function drawState(data){
+  const session=data.session,s=session&&!session.done?session.state:null,trail=session?.trail||[];
+  const last=trail.length?trail[trail.length-1]:null;
+  let hour=s?s[0]:(session?.done?3:-1);
+  $('episodeStatus').textContent=(!session?'SIN EPISODIO':session.done?'EPISODIO CERRADO':'EPISODIO EN CURSO');
+  $('stateLine').textContent=s?'TURNO '+(s[0]+1)+' / 4 · '+(session.first?'INICIO EXPLORATORIO':'DECISIÓN LIBRE'):session?.done?'EPISODIO COMPLETO':'INICIA UN NUEVO EPISODIO';
+  $('stepper').innerHTML=[0,1,2,3].map(i=>'<div class="step '+(hour===i&&!session?.done?'active':(hour>i||session?.done?'past':''))+'">'+('0'+(i+1)).slice(-2)+'</div>').join('');
+  const pending=s?s[1]:0,available=s?!!s[2]:true,congested=s?!!s[3]:false;
+  $('weather').textContent=s?'● Congestión '+(congested?'ALTA':'BAJA'):'● Congestión —';
+  $('weather').classList.toggle('hot',congested);
+  $('queue').innerHTML=Array.from({length:Math.max(3,pending)},(_,i)=>'<div class="order '+(i>=pending?'empty':'')+'">'+(i<pending?'▣':'·')+'</div>').join('');
+  $('pendingLabel').textContent=s?(pending+' pendientes'):'Esperando operación';
+  $('vehicleLabel').textContent=s?(available?'Disponible':'Ocupado'):'Listo para despachar';
+  $('truck').classList.toggle('off',!available);
+  $('stateOrders').textContent=s?pending:'—';
+  $('stateVehicle').textContent=s?(available?'Disponible':'Ocupado'):'—';
+  $('stateProfit').textContent=money(session?.total||0);
+  const container=$('actions');container.replaceChildren();
+  if(!s){
+    $('decisionTitle').textContent=session?.done?'Episodio terminado.':'Tu siguiente decisión comienza aquí.';
+    $('decisionSub').textContent=session?.done?'Las estimaciones Q se actualizaron con los retornos del episodio. Puedes explorar otra partida o entrenar automáticamente.':'Empieza en un estado y con una acción inicial asignados aleatoriamente. No conocerás qué ocurrirá después.';
+    const button=document.createElement('button');button.className='primary';button.textContent='Iniciar nuevo episodio →';button.onclick=start;container.appendChild(button);
+    $('actionfooter').textContent='Exploring starts: el estado y la primera acción se eligen para mejorar la cobertura.';
+  }else{
+    $('decisionTitle').textContent=session.first?'¡Inicio exploratorio!':'¿Despachas o esperas?';
+    $('decisionSub').textContent=session.first?'La primera acción es obligatoria; el objetivo es explorar pares estado–acción distintos.':'Elige una acción. Los pedidos nuevos y la congestión se revelan después del turno.';
+    if(session.first){const note=document.createElement('div');note.className='force';note.textContent='ACCIÓN INICIAL OBLIGATORIA: '+session.forced+'. En el siguiente turno podrás decidir libremente.';container.appendChild(note)}
+    const possible=pending&&available?['ESPERAR','DESPACHAR']:['ESPERAR'];
+    for(const action of possible){
+      const el=document.createElement('button');
+      el.className='action '+(action==='ESPERAR'?'wait':'')+(session.first&&session.forced===action?' highlight':'');
+      el.disabled=session.first&&session.forced!==action;
+      const q=data.q?.[action],value=q?.n?'Q ≈ '+number(q.value)+' · '+q.n+' visitas':'Q sin estimar';
+      el.innerHTML='<span class="num">'+(action==='DESPACHAR'?'→':'Ⅱ')+'</span><div><b>'+(action==='DESPACHAR'?'Despachar vehículo':'Esperar y consolidar')+'</b><span>'+(action==='DESPACHAR'?'Entrega hasta 4 pedidos; paga despacho y posible recargo por congestión.':'Retiene pedidos, acumula costos de espera y da oportunidad a que entren nuevos pedidos.')+'</span><span class="est">'+value+'</span></div>';
+      el.onclick=()=>act(action);container.appendChild(el);
+    }
+    $('actionfooter').textContent=possible.length===1?'Única acción válida ahora: esperar. No hay vehículo disponible o no hay pedidos.':'El rendimiento depende de ingresos menos costos; espera puede ayudar o empeorar la congestión.';
+  }
+  $('feedback').classList.toggle('hide',!last);
+  $('receipt').classList.toggle('hide',!last);
+  if(last){
+    $('feedback').classList.toggle('negative',last.reward<0);
+    $('feedbackValue').textContent=money(last.reward);
+    $('feedbackTitle').textContent=(last.action==='DESPACHAR'?'Despacho ejecutado':'Turno de espera')+' · '+last.delivered+' pedidos entregados';
+    $('feedbackText').textContent=(last.arrivals||0)+' pedidos nuevos llegaron · '+(last.rejected||0)+' pedidos rechazados · '+(last.unfinished||0)+' sin completar al cierre. '+(session.done?'Episodio completo.':'Continúa al siguiente turno.');
+    const b=last.breakdown||{},lines=[['Ingreso por entregas',b.income||0,1],['Costo de despacho',b.dispatch||0,-1],['Recargo congestión',b.congestion||0,-1],['Espera de pedidos',b.waiting||0,-1],['Pedidos rechazados',b.rejected||0,-1],['Pendientes al cierre',b.unfinished||0,-1]];
+    $('receipt').innerHTML=lines.map(([title,value,sign])=>'<div>'+title+'<b class="'+(sign>0?'pos':'neg')+'">'+(sign<0?'−':'+')+'$'+number(value)+'</b></div>').join('');
+  }
+}
+function drawPolicy(){
+  if(!model)return;
+  const hour=Number($('hourFilter').value),cong=Number($('congestionFilter').value);
+  const rows=model.policy.filter(x=>x.t===hour&&x.c===cong);
+  $('policyBody').innerHTML=rows.map(r=>{
+    const enough=r.p===0?r.nWait>0:r.nWait>0&&r.nDispatch>0;
+    return '<tr><td><b>'+r.p+'</b> pedido'+(r.p===1?'':'s')+'</td><td><span class="pick '+(!enough?'unknown':r.action==='DESPACHAR'?'send':'')+'">'+(enough?r.action:'EN EXPLORACIÓN')+'</span></td><td>'+(r.qWait===null?'—':number(r.qWait))+'</td><td>'+(r.p===0?'No aplica':r.qDispatch===null?'—':number(r.qDispatch))+'</td><td>'+r.nWait+' / '+r.nDispatch+'</td></tr>';
+  }).join('');
+}
+function drawRanking(leaders){
+  $('leaders').innerHTML=leaders.length?leaders.map(r=>
+    '<div class="leaderline"><div class="ranknum">'+(r.rank===1?'★':String(r.rank).padStart(2,'0'))+'</div><div class="rankname">'+escapeHTML(r.alias)+(r.stale?' <span class="stale">· Desactualizado</span>':'')+'<small>'+number(r.episodes)+' episodios · '+r.missed+' pedidos perdidos</small></div><div class="rankvalue">$'+number(r.average)+'</div></div>'
+  ).join(''):'<div class="rankempty">Aún no se ha evaluado ninguna política. Entrena 20 episodios y publica tu primer resultado.</div>';
+}
+function drawHistory(session){
+  const rows=session?.trail||[];
+  $('historyRows').innerHTML=rows.length?rows.map((z,i)=>
+    '<tr><td>'+(i+1)+'</td><td>'+z.state[1]+'</td><td>'+(z.state[2]?'Libre':'Ocupado')+'</td><td>'+(z.state[3]?'Alta':'Baja')+'</td><td>'+z.action+'</td><td>'+z.delivered+'</td><td>'+Number(z.rejected||0)+'</td><td class="'+(z.reward>=0?'profit':'danger')+'">'+money(z.reward)+'</td></tr>'
+  ).join(''):'<tr><td colspan="8" class="muted">El historial aparecerá aquí después de tu primera decisión.</td></tr>';
+}
+$('alias').addEventListener('keydown',event=>{if(event.key==='Enter')join()});
+$('room').addEventListener('keydown',event=>{if(event.key==='Enter')join()});
+if(auth)refresh();
+</script>
+</body>
+</html>

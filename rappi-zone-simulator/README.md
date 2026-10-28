@@ -1,41 +1,49 @@
-# Rappi Zone Simulator
+# DispatchLab — simulador de despacho con Monte Carlo Exploring Starts
 
-Laboratorio educativo con dos juegos interactivos:
+Juego de clase para aprender Reinforcement Learning (MC-ES) mediante decisiones de despacho de vehículos. El servicio Railway existente usa el directorio raíz `/rappi-zone-simulator`. Hay una copia del servidor y la interfaz en `/dispatchlab-multijugador`.
 
-- **Presión operativa por zona:** muestra cómo la demanda, la capacidad y las decisiones de operaciones afectan el ETA.
-- **Segmentación de clientes:** permite clasificar clientes nuevos, elegir intervenciones y analizar si una decisión fue buena o solo tuvo suerte.
+## Cómo jugar
 
-## Ejecutarlo localmente
+1. Entra con una sala y alias; cada estudiante aprende Q de manera independiente.
+2. Inicia un episodio. El simulador asigna el estado inicial y la primera acción obligatoria (exploring start).
+3. Elige acciones en los turnos siguientes y observa pedidos, disponibilidad del vehículo, congestión, entregas y costos.
+4. En el entrenamiento automático, el agente sigue la política greedy después de la primera acción. Al terminar el episodio, actualiza Q con el promedio incremental de retornos first-visit.
+5. Consulta el mapa de política por hora, congestión y pedidos.
+6. Tras 20 episodios como mínimo, evalúa tu política para competir.
 
-Necesitas Node.js 20 o superior.
+## Quién gana
 
-```bash
-npm start
-```
+**Gana la política con mayor utilidad neta promedio en 80 escenarios idénticos para todos los estudiantes.** Cada escenario tiene un estado inicial fijo y una secuencia pseudoaleatoria determinista. Se evalúa la política greedy congelada, sin exploración ni actualización de Q.
 
-Abre `http://localhost:3000`. La contraseña inicial del modo proyector es `uniandes2026`.
+- Puntuación oficial = suma de recompensas de los 80 escenarios / 80.
+- Recompensa por turno = 30 × entregados − 35 si hay despacho − 15 si se despacha con congestión alta − 6 × pendientes tras la acción − 20 × rechazados − 20 × sin entregar al cerrar el horizonte.
+- Desempate = menos pedidos perdidos (rechazados + sin entregar al cierre), acumulados en los mismos 80 escenarios. Si también empatan allí, comparten la posición.
+- Los episodios de entrenamiento no otorgan puntos directamente.
+- Al entrenar después de evaluar, el ranking marca la puntuación como desactualizada hasta reevaluar.
+- El benchmark es una comparación reproducible en un conjunto fijo, no una estimación perfecta del valor esperado.
 
-Para usar otra contraseña:
+## Modelo y pedagogía
 
-```bash
-PRESENTER_PASSWORD="tu-clave" npm start
-```
+Estado `[hora, pedidos pendientes, vehículo disponible, congestión]`: 4 horas, de 0 a 6 pedidos, vehículo libre/ocupado y congestión alta/baja. Acciones: ESPERAR y DESPACHAR (solo si hay vehículo y pedidos). Capacidad de despacho: 4 pedidos.
 
-## Publicarlo en Railway
+Las probabilidades están en el servidor y no viajan al navegador. **Advertencia:** el repositorio es público y los estudiantes pueden leer `server.js`. Si deben permanecer desconocidas incluso para quien inspeccione GitHub, se requiere un backend privado.
 
-1. Sube esta carpeta a un repositorio de GitHub.
-2. En Railway, crea un proyecto nuevo y elige **Deploy from GitHub repo**.
-3. Selecciona el repositorio. Railway detectará Node y ejecutará `npm start`.
-4. En **Variables**, crea `PRESENTER_PASSWORD` con una clave propia.
-5. En **Settings → Networking**, pulsa **Generate Domain**.
-6. Comparte ese dominio con los estudiantes.
+En el juego manual, las decisiones posteriores al inicio exploratorio pueden no seguir la política greedy. Es útil para explorar y aprender, mientras que el entrenamiento automático implementa directamente el control MC-ES.
 
-No necesitas configurar una base de datos. El estado compartido vive en memoria y se reinicia cuando el servicio se vuelve a desplegar o reinicia, lo cual es adecuado para sesiones de clase.
+## Ejecutar
 
-## Estructura
+Requiere Node.js 20 o superior, sin dependencias externas:
 
-- `upload/home.html`: selector de juegos.
-- `upload/rappi-zone-simulator.html`: simulador de zonas.
-- `upload/segmentation-game.html`: juego de segmentación y post mortem.
-- `server.js`: servidor web y sincronización compartida.
-- `railway.json`: configuración de despliegue y health check.
+    npm start
+
+Abrir `http://localhost:3000`.
+
+## Desplegar en Railway
+
+Conservar Root Directory `/rappi-zone-simulator`, rama `main`, Start Command `npm start`, Health Check `/health` y habilitar Autodeploy si se desean despliegues por push. No mover el root a la carpeta espejo.
+
+El estado se guarda por defecto en `data/state.json`. Para persistirlo entre despliegues, montar un volumen y configurar `DATA_FILE=/data/state.json`. Sin volumen, salas y puntuaciones pueden perderse al redesplegar.
+
+Endpoints: `/api/join`, `/api/state`, `/api/start`, `/api/act`, `/api/train`, `/api/evaluate`.
+
+Este laboratorio es una herramienta educativa, no un servicio de autenticación seguro ni un sistema de exámenes protegido contra trampas.

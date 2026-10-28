@@ -75,8 +75,8 @@ function updateQ(user,trail){
 }
 function startPair(user){
   const room=db.rooms[user.room];
-  const minimum=Math.min(...PAIRS.map(x=>room.starts[x.key]||0));
-  const candidate=pick(PAIRS.filter(x=>(room.starts[x.key]||0)===minimum));
+  const minimum=Math.min(...PAIRS.map(x=>user.starts[x.key]||0));
+  const candidate=pick(PAIRS.filter(x=>(user.starts[x.key]||0)===minimum));
   room.starts[candidate.key]=(room.starts[candidate.key]||0)+1;
   user.starts[candidate.key]=(user.starts[candidate.key]||0)+1;
   return candidate;
